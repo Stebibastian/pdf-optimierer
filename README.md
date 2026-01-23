@@ -37,7 +37,15 @@ Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und
 2. Entpacke die ZIP-Datei
 3. Öffne den Ordner `pdf-optimierer-main`
 4. **Doppelklick auf `PDF Optimierer.app`**
-5. Bei Sicherheitswarnung: Rechtsklick → "Öffnen"
+5. **Bei Sicherheitswarnung (wichtig!):**
+
+   macOS blockiert die App, weil sie nicht signiert ist. **So öffnest du sie:**
+
+   - **Methode 1:** **Rechtsklick** auf die App → **"Öffnen"** → "Öffnen" bestätigen
+   - **Methode 2:** Systemeinstellungen → **Datenschutz & Sicherheit** → **"Trotzdem öffnen"**
+
+   ⚠️ Die App ist nicht signiert, aber der Code ist Open Source und kann eingesehen werden.
+
 6. Fertig! Die App installiert alle benötigten Tools automatisch beim ersten Start
 
 **Option 2: Mit Git**
@@ -109,6 +117,23 @@ Beim ersten Start installiert die App:
 **Hinweis:** Existierende Dateien werden überschrieben.
 
 ## Problemlösung
+
+### ⚠️ "App wurde blockiert" - macOS Gatekeeper
+
+**Problem:** macOS sagt *"PDF Optimierer.app wurde blockiert, um deinen Mac zu schützen"*
+
+**Lösung:**
+1. **Systemeinstellungen** öffnen
+2. **Datenschutz & Sicherheit**
+3. Scrolle nach unten bis: *"PDF Optimierer.app wurde blockiert"*
+4. Klicke **"Trotzdem öffnen"**
+5. Im nächsten Dialog: **"Öffnen"** bestätigen
+
+**Alternative (einfacher):**
+- **Rechtsklick** auf die App → **"Öffnen"** (statt Doppelklick)
+- Im Dialog: **"Öffnen"** bestätigen
+
+**Warum?** Die App ist nicht mit einem Apple Developer Zertifikat signiert ($99/Jahr). Der komplette Code ist hier auf GitHub einsehbar und Open Source.
 
 ### App startet nicht
 1. Prüfe die Log-Datei: `~/Desktop/pdf_optimierer.log`
