@@ -37,14 +37,15 @@ Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und
 2. Entpacke die ZIP-Datei
 3. Öffne den Ordner `pdf-optimierer-main`
 4. **Doppelklick auf `PDF Optimierer.app`**
-5. **Bei Sicherheitswarnung (wichtig!):**
+5. **Bei Sicherheitswarnung (nur beim ersten Mal!):**
 
-   macOS blockiert die App, weil sie nicht signiert ist. **So öffnest du sie:**
+   macOS blockiert die App. **So öffnest du sie:**
 
-   - **Methode 1:** **Rechtsklick** auf die App → **"Öffnen"** → "Öffnen" bestätigen
-   - **Methode 2:** Systemeinstellungen → **Datenschutz & Sicherheit** → **"Trotzdem öffnen"**
+   - Öffne **Systemeinstellungen** → **Datenschutz & Sicherheit**
+   - Scrolle nach unten zu: *"PDF Optimierer.app wurde blockiert"*
+   - Klicke **"Dennoch öffnen"** → **"Öffnen"** bestätigen
 
-   ⚠️ Die App ist nicht signiert, aber der Code ist Open Source und kann eingesehen werden.
+   ✅ Danach startet die App normal und du musst das nie wieder machen!
 
 6. Fertig! Die App installiert alle benötigten Tools automatisch beim ersten Start
 
@@ -120,20 +121,22 @@ Beim ersten Start installiert die App:
 
 ### ⚠️ "App wurde blockiert" - macOS Gatekeeper
 
-**Problem:** macOS sagt *"PDF Optimierer.app wurde blockiert, um deinen Mac zu schützen"*
+**Problem:** Beim ersten Start wird die App von macOS blockiert mit der Meldung *"PDF Optimierer.app wurde blockiert, um deinen Mac zu schützen"*
 
-**Lösung:**
-1. **Systemeinstellungen** öffnen
-2. **Datenschutz & Sicherheit**
-3. Scrolle nach unten bis: *"PDF Optimierer.app wurde blockiert"*
-4. Klicke **"Trotzdem öffnen"**
-5. Im nächsten Dialog: **"Öffnen"** bestätigen
+**Lösung (einfachste Methode):**
 
-**Alternative (einfacher):**
-- **Rechtsklick** auf die App → **"Öffnen"** (statt Doppelklick)
+1. **Systemeinstellungen** öffnen (oder Systemeinstellungen > Datenschutz & Sicherheit)
+2. Scrolle nach unten bis zur Meldung: *"PDF Optimierer.app wurde blockiert"*
+3. Klicke auf den Button **"Dennoch öffnen"**
+4. Im Bestätigungs-Dialog: Klicke **"Öffnen"**
+5. ✅ Die App startet nun und du musst das nie wieder machen
+
+**Alternative Methode:**
+- **Rechtsklick** (Ctrl+Klick) auf die App → **"Öffnen"** wählen (statt Doppelklick)
 - Im Dialog: **"Öffnen"** bestätigen
 
-**Warum?** Die App ist nicht mit einem Apple Developer Zertifikat signiert ($99/Jahr). Der komplette Code ist hier auf GitHub einsehbar und Open Source.
+**Warum wird die App blockiert?**
+Die App ist nicht mit einem Apple Developer Zertifikat signiert (kostet $99/Jahr). Der komplette Quellcode ist hier auf GitHub einsehbar und Open Source - die App ist sicher zu verwenden.
 
 ### App startet nicht
 1. Prüfe die Log-Datei: `~/Desktop/pdf_optimierer.log`
