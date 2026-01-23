@@ -2,6 +2,10 @@
 
 Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und technische Zeichnungen.
 
+[![Download](https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge)](https://github.com/Stebibastian/pdf-optimierer/archive/refs/heads/main.zip)
+[![macOS](https://img.shields.io/badge/macOS-10.15+-000000?style=flat-square&logo=apple)](https://www.apple.com/macos/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+
 ## Features
 
 ✅ **Glätten für FileMaker** - Konvertiert PDFs in ein FileMaker-kompatibles Format
@@ -26,27 +30,36 @@ Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und
 
 ## Installation
 
+### Für Endbenutzer (Einfach)
+
+**Option 1: Direct Download (Empfohlen)**
+1. **[📥 Download PDF Optimierer.zip](https://github.com/Stebibastian/pdf-optimierer/archive/refs/heads/main.zip)**
+2. Entpacke die ZIP-Datei
+3. Öffne den Ordner `pdf-optimierer-main`
+4. **Doppelklick auf `PDF Optimierer.app`**
+5. Bei Sicherheitswarnung: Rechtsklick → "Öffnen"
+6. Fertig! Die App installiert alle benötigten Tools automatisch beim ersten Start
+
+**Option 2: Mit Git**
+```bash
+git clone https://github.com/Stebibastian/pdf-optimierer.git
+cd pdf-optimierer
+open "PDF Optimierer.app"
+```
+
 ### Voraussetzungen
-- macOS 10.15 oder höher
-- Python 3 (über Homebrew installiert)
+- macOS 10.15 (Catalina) oder höher
+- Internetverbindung (für automatische Installation der Tools)
+- Ca. 500 MB freier Speicherplatz
 
-### Schnellstart
-
-1. **Repository klonen:**
-   ```bash
-   git clone https://github.com/DEIN_USERNAME/pdf-optimierer.git
-   cd pdf-optimierer
-   ```
-
-2. **App starten:**
-   - Doppelklick auf `PDF Optimierer.app`
-   - Beim ersten Start werden automatisch alle Dependencies installiert:
-     - Homebrew (falls nicht vorhanden)
-     - Ghostscript
-     - ImageMagick
-     - ExifTool
-     - PyMuPDF (fitz)
-     - Pillow
+### Was wird automatisch installiert?
+Beim ersten Start installiert die App:
+- ✅ Homebrew (falls nicht vorhanden)
+- ✅ Ghostscript
+- ✅ ImageMagick
+- ✅ ExifTool
+- ✅ PyMuPDF (Python-Paket)
+- ✅ Pillow (Python-Paket)
 
 3. **Bei Sicherheitswarnung:**
    - Rechtsklick auf die App → "Öffnen"
