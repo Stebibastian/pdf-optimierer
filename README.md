@@ -85,14 +85,26 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-**3. Tools installieren:**
+**3. Tools einzeln installieren:**
+
+Jedes Tool einzeln bestätigen (brew fragt bei jedem nach):
+
 ```bash
-brew install ghostscript imagemagick exiftool python3
+brew install ghostscript
+brew install imagemagick
+brew install exiftool
+brew install python3
+```
+
+Oder alle auf einmal (ohne Bestätigung):
+```bash
+brew install ghostscript imagemagick exiftool python3 -y
 ```
 
 **4. Python-Pakete installieren:**
 ```bash
-pip3 install PyMuPDF Pillow --break-system-packages
+pip3 install PyMuPDF --break-system-packages
+pip3 install Pillow --break-system-packages
 ```
 
 **5. App erneut starten**
