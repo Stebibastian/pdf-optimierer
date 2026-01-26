@@ -36,12 +36,53 @@ if ! command -v brew &> /dev/null; then
 
     # Prüfe ob Xcode Command Line Tools installiert sind
     if ! xcode-select -p &> /dev/null; then
-        show_error "Xcode Command Line Tools fehlen!\n\nBitte installiere sie mit:\nxcode-select --install\n\nDanach starte die App erneut."
+        osascript <<'XCODE_HELP'
+display dialog "⚠️ Xcode Command Line Tools fehlen!
+
+Diese sind erforderlich, um Homebrew zu installieren.
+
+📋 Installation:
+
+1. Führe diesen Befehl im Terminal aus:
+   xcode-select --install
+
+2. Ein Dialog erscheint - klicke auf \"Installieren\"
+
+3. Warte bis die Installation abgeschlossen ist (kann 5-10 Min dauern)
+
+4. Starte diese App danach erneut
+
+🔧 Oder installiere Xcode aus dem App Store (größer, aber komplett)" buttons {"OK"} default button 1 with title "PDF Optimierer - Xcode Tools fehlen" with icon stop
+XCODE_HELP
         exit 1
     fi
 
     if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>&1; then
-        show_error "Homebrew Installation fehlgeschlagen!\n\nBitte installiere manuell:\nhttps://brew.sh\n\nSiehe Log: ~/Desktop/pdf_optimierer.log"
+        osascript <<'BREW_HELP'
+display dialog "⚠️ Homebrew Installation fehlgeschlagen!
+
+📋 Manuelle Installation:
+
+1. Öffne Terminal (in Programme > Dienstprogramme)
+
+2. Kopiere und führe diesen Befehl aus:
+   /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
+
+3. Folge den Anweisungen im Terminal
+
+4. ⚠️ SEHR WICHTIG: Am Ende zeigt Homebrew 2 Befehle an, die so aussehen:
+   echo 'eval \"$(/opt/homebrew/bin/brew shellenv)\"' >> ~/.zprofile
+   eval \"$(/opt/homebrew/bin/brew shellenv)\"
+
+   Diese MÜSSEN ausgeführt werden!
+
+   Oder einfacher: Terminal komplett schließen und neu öffnen
+
+5. Starte diese App erneut
+
+📄 Log: ~/Desktop/pdf_optimierer.log
+🌐 Mehr Infos: https://brew.sh" buttons {"OK"} default button 1 with title "PDF Optimierer - Homebrew Installation" with icon stop
+BREW_HELP
         INSTALL_FAILED=1
     fi
 fi
@@ -98,7 +139,38 @@ if ! python3 -c "from PIL import Image" 2>/dev/null; then
 fi
 
 if [ $INSTALL_FAILED -eq 1 ]; then
-    show_error "Installation nicht vollständig!\n\nBitte siehe:\n- Log: ~/Desktop/pdf_optimierer.log\n- Anleitung: github.com/Stebibastian/pdf-optimierer"
+    # Zeige ausführliche Installations-Anleitung
+    osascript <<'HELP_DIALOG'
+display dialog "⚠️ Installation fehlgeschlagen!
+
+Die automatische Installation konnte nicht abgeschlossen werden.
+
+📋 Bitte führe die folgenden Schritte MANUELL aus:
+
+1️⃣ Xcode Command Line Tools:
+   xcode-select --install
+
+2️⃣ Homebrew installieren:
+   /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
+
+   ⚠️ WICHTIG: Nach der Installation zeigt Homebrew 2 Befehle an - diese MÜSSEN ausgeführt werden!
+   (Oder Terminal komplett neu starten)
+
+3️⃣ Tools installieren (jeden Befehl einzeln):
+   brew install ghostscript
+   brew install imagemagick
+   brew install exiftool
+   brew install python3
+
+4️⃣ Python-Pakete (probiere zuerst ohne --break-system-packages):
+   pip3 install PyMuPDF
+   pip3 install Pillow
+
+📄 Details im Log: ~/Desktop/pdf_optimierer.log
+📖 Vollständige Anleitung: github.com/Stebibastian/pdf-optimierer
+
+Nach der manuellen Installation die App erneut starten!" buttons {"OK"} default button 1 with title "PDF Optimierer - Installation" with icon stop
+HELP_DIALOG
     exit 1
 fi
 
