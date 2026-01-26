@@ -249,7 +249,27 @@ PYEND
 else
     # === GLÄTTEN FÜR FILEMAKER ===
 
-    notify "Glätten für FileMaker" "Verarbeite $(basename "$pdf_path")..."
+    # Frage nach Qualität
+    quality_choice=$(osascript 2>&1 <<'APPLESCRIPT'
+set theChoice to button returned of (display dialog "Wähle die Qualität:" buttons {"Abbrechen", "Normal (200 DPI)", "Hoch (300 DPI)"} default button 3 with title "PDF Optimierer")
+return theChoice
+APPLESCRIPT
+    )
+
+    if [[ "$quality_choice" == "Abbrechen" ]]; then
+        exit 0
+    fi
+
+    # Setze DPI basierend auf Auswahl
+    if [[ "$quality_choice" == "Hoch (300 DPI)" ]]; then
+        DPI=300
+        DPI_DESC="300 DPI"
+    else
+        DPI=200
+        DPI_DESC="200 DPI"
+    fi
+
+    notify "Glätten für FileMaker" "Verarbeite mit $DPI_DESC..."
 
     output_dir=$(dirname "$pdf_path")
     base_name=$(basename "$pdf_path" .pdf)
@@ -257,6 +277,7 @@ else
 
     export PDF_PATH="$pdf_path"
     export OUTPUT_PATH="$output_path"
+    export DPI="$DPI"
 
     /opt/homebrew/bin/python3 << 'PYEND'
 import sys
@@ -274,9 +295,10 @@ except ImportError as e:
 
 pdf_path = os.environ.get('PDF_PATH')
 output_path = os.environ.get('OUTPUT_PATH')
+dpi = int(os.environ.get('DPI', '300'))
 
 try:
-    print("Öffne PDF...")
+    print(f"Öffne PDF (mit {dpi} DPI)...")
     doc = fitz.open(pdf_path)
     num_pages = len(doc)
     print(f"Seiten: {num_pages}")
@@ -301,7 +323,7 @@ try:
     png_pattern = os.path.join(temp_dir, "page_%03d.png")
     gs_cmd = [
         'gs', '-dNOPAUSE', '-dBATCH', '-dSAFER',
-        '-sDEVICE=png16m', '-r300',
+        '-sDEVICE=png16m', f'-r{dpi}',
         '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4',
         f'-sOutputFile={png_pattern}', pdf_path
     ]
