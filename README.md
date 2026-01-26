@@ -123,22 +123,31 @@ brew install python3
 
 **4. Python-Pakete installieren:**
 
-**Methode 1 (Empfohlen):**
+**Methode 1 (Einfachste - zuerst probieren):**
 ```bash
-pip3 install --break-system-packages PyMuPDF
+pip3 install PyMuPDF
 ```
 
 ```bash
-pip3 install --break-system-packages Pillow
+pip3 install Pillow
 ```
 
-**Methode 2 (falls Methode 1 nicht klappt):**
+**Methode 2 (falls "no such option" Fehler):**
 ```bash
 python3 -m pip install PyMuPDF
 ```
 
 ```bash
 python3 -m pip install Pillow
+```
+
+**Methode 3 (nur bei "externally-managed" Fehler):**
+```bash
+pip3 install --break-system-packages PyMuPDF
+```
+
+```bash
+pip3 install --break-system-packages Pillow
 ```
 
 **5. App erneut starten**
