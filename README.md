@@ -87,23 +87,31 @@ xcode-select --install
 
 **3. Tools einzeln installieren:**
 
-Jedes Tool einzeln bestätigen (brew fragt bei jedem nach):
+Kopiere jeden Befehl einzeln und führe ihn aus:
 
 ```bash
 brew install ghostscript
+```
+
+```bash
 brew install imagemagick
+```
+
+```bash
 brew install exiftool
+```
+
+```bash
 brew install python3
 ```
 
-Oder alle auf einmal (ohne Bestätigung):
-```bash
-brew install ghostscript imagemagick exiftool python3 -y
-```
-
 **4. Python-Pakete installieren:**
+
 ```bash
 pip3 install PyMuPDF --break-system-packages
+```
+
+```bash
 pip3 install Pillow --break-system-packages
 ```
 
