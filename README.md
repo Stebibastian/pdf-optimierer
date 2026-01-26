@@ -85,6 +85,22 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
+**⚠️ WICHTIG nach Homebrew-Installation:**
+
+Am Ende der Installation zeigt Homebrew zwei Befehle an, die du ausführen musst. Sie sehen so aus:
+
+```bash
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+```
+
+```bash
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
+
+**Kopiere diese Befehle aus DEINEM Terminal** (nicht von hier) und führe sie aus!
+
+Alternativ: **Schließe das Terminal komplett und öffne es neu.**
+
 **3. Tools einzeln installieren:**
 
 Kopiere jeden Befehl einzeln und führe ihn aus:
