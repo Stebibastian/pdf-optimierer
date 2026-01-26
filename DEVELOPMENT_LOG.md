@@ -18,10 +18,8 @@
 │   │   ├── MacOS/PDF_Optimierer         # Kopie des Hauptskripts
 │   │   └── Resources/AppIcon.icns       # App-Icon
 ├── README.md                            # Dokumentation
-├── .gitignore                           # Git-Ignores
-├── RELEASE_NOTES_v1.1.0.md             # Release Notes v1.1.0
-├── RELEASE_NOTES_v1.1.1.md             # Release Notes v1.1.1
-└── RELEASE_NOTES_v1.1.2.md             # Release Notes v1.1.2
+├── DEVELOPMENT_LOG.md                   # Diese Datei - Entwicklungsdokumentation
+└── .gitignore                           # Git-Ignores
 ```
 
 ## Funktionen
