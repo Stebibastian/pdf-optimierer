@@ -28,11 +28,22 @@ echo ""
 notify "Prüfe System" "Überprüfe installierte Tools..."
 
 NEED_INSTALL=()
+INSTALL_FAILED=0
 
 # Prüfe Homebrew
 if ! command -v brew &> /dev/null; then
-    notify "Installation" "Homebrew wird installiert..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    notify "Installation" "Homebrew wird installiert... (kann 5-10 Min dauern)"
+
+    # Prüfe ob Xcode Command Line Tools installiert sind
+    if ! xcode-select -p &> /dev/null; then
+        show_error "Xcode Command Line Tools fehlen!\n\nBitte installiere sie mit:\nxcode-select --install\n\nDanach starte die App erneut."
+        exit 1
+    fi
+
+    if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>&1; then
+        show_error "Homebrew Installation fehlgeschlagen!\n\nBitte installiere manuell:\nhttps://brew.sh\n\nSiehe Log: ~/Desktop/pdf_optimierer.log"
+        INSTALL_FAILED=1
+    fi
 fi
 
 # Prüfe Ghostscript
@@ -51,24 +62,48 @@ if ! command -v exiftool &> /dev/null; then
 fi
 
 # Installiere fehlende Tools
-if [ ${#NEED_INSTALL[@]} -gt 0 ]; then
-    notify "Installation" "Installiere: ${NEED_INSTALL[*]}"
-    brew install "${NEED_INSTALL[@]}"
+if [ ${#NEED_INSTALL[@]} -gt 0 ] && [ $INSTALL_FAILED -eq 0 ]; then
+    notify "Installation" "Installiere ${#NEED_INSTALL[@]} Tool(s)... (kann einige Minuten dauern)"
+
+    if ! brew install "${NEED_INSTALL[@]}" 2>&1; then
+        show_error "Tool-Installation fehlgeschlagen!\n\nBitte installiere manuell:\nbrew install ${NEED_INSTALL[*]}\n\nSiehe Log: ~/Desktop/pdf_optimierer.log"
+        INSTALL_FAILED=1
+    fi
+fi
+
+# Prüfe Python
+if ! command -v python3 &> /dev/null; then
+    show_error "Python 3 nicht gefunden!\n\nBitte installiere Homebrew Python:\nbrew install python3"
+    exit 1
 fi
 
 # Prüfe PyMuPDF
-if ! /opt/homebrew/bin/python3 -c "import fitz" 2>/dev/null; then
+if ! python3 -c "import fitz" 2>/dev/null; then
     notify "Installation" "Installiere PyMuPDF..."
-    /opt/homebrew/bin/pip3 install PyMuPDF --break-system-packages
+
+    if ! pip3 install PyMuPDF --break-system-packages 2>&1; then
+        show_error "PyMuPDF Installation fehlgeschlagen!\n\nBitte installiere manuell:\npip3 install PyMuPDF --break-system-packages"
+        INSTALL_FAILED=1
+    fi
 fi
 
 # Prüfe Pillow
-if ! /opt/homebrew/bin/python3 -c "from PIL import Image" 2>/dev/null; then
+if ! python3 -c "from PIL import Image" 2>/dev/null; then
     notify "Installation" "Installiere Pillow..."
-    /opt/homebrew/bin/pip3 install Pillow --break-system-packages
+
+    if ! pip3 install Pillow --break-system-packages 2>&1; then
+        show_error "Pillow Installation fehlgeschlagen!\n\nBitte installiere manuell:\npip3 install Pillow --break-system-packages"
+        INSTALL_FAILED=1
+    fi
+fi
+
+if [ $INSTALL_FAILED -eq 1 ]; then
+    show_error "Installation nicht vollständig!\n\nBitte siehe:\n- Log: ~/Desktop/pdf_optimierer.log\n- Anleitung: github.com/Stebibastian/pdf-optimierer"
+    exit 1
 fi
 
 echo "✓ Alle Dependencies installiert"
+notify "Bereit!" "Alle Tools sind installiert"
 echo ""
 
 # Schritt 2: Zeige Auswahl-Dialog
