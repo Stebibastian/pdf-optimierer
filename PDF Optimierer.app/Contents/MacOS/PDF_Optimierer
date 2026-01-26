@@ -106,62 +106,50 @@ echo "✓ Alle Dependencies installiert"
 notify "Bereit!" "Alle Tools sind installiert"
 echo ""
 
-# Schritt 2: Zeige Auswahl-Dialog
-choice=$(osascript 2>&1 <<'APPLESCRIPT'
-tell application "Preview"
-    try
-        if (count of windows) = 0 then
-            return "ERROR: Kein PDF in Preview geöffnet"
-        end if
-    end try
-end tell
+# Schritt 2: Wähle PDF-Datei(en)
+pdf_paths=$(osascript 2>&1 <<'APPLESCRIPT'
+try
+    set thePDFs to choose file with prompt "Wähle PDF-Datei(en) zum Optimieren:" of type {"com.adobe.pdf"} with multiple selections allowed
+    set posixPaths to {}
+    repeat with aPDF in thePDFs
+        set end of posixPaths to POSIX path of aPDF
+    end repeat
+    set text item delimiters to linefeed
+    return posixPaths as text
+on error
+    return "ABGEBROCHEN"
+end try
+APPLESCRIPT
+)
 
-set theChoice to button returned of (display dialog "Was möchten Sie tun?" buttons {"Abbrechen", "Verkleinern (Skalieren)", "Glätten für FileMaker"} default button 3 with title "PDF Optimierer")
+if [[ "$pdf_paths" == "ABGEBROCHEN" ]] || [[ -z "$pdf_paths" ]]; then
+    exit 0
+fi
 
-return theChoice
+# Zähle Anzahl Dateien
+file_count=$(echo "$pdf_paths" | wc -l | tr -d ' ')
+echo "Anzahl Dateien: $file_count"
+
+# Schritt 3: Zeige Auswahl-Dialog
+choice=$(osascript 2>&1 <<APPLESCRIPT
+try
+    set theChoice to button returned of (display dialog "Was möchten Sie tun mit $file_count Datei(en)?" buttons {"Abbrechen", "Verkleinern (Skalieren)", "Glätten für FileMaker"} default button 3 with title "PDF Optimierer")
+    return theChoice
+on error
+    return "ABGEBROCHEN"
+end try
 APPLESCRIPT
 )
 
 echo "Auswahl: $choice"
 
-if [[ "$choice" == "ERROR:"* ]] || [[ "$choice" == "Abbrechen" ]]; then
-    show_error "Kein PDF in Preview geöffnet oder abgebrochen"
-    exit 1
+if [[ "$choice" == "Abbrechen" ]] || [[ "$choice" == "ABGEBROCHEN" ]] || [[ "$choice" == *"User canceled"* ]]; then
+    exit 0
 fi
 
-# Hole PDF-Pfad aus Preview
-pdf_path=$(osascript 2>&1 <<'APPLESCRIPT'
-tell application "Preview"
-    try
-        if (count of windows) = 0 then
-            return "ERROR: Kein Fenster geöffnet"
-        end if
-        set thePath to path of front document
-        return POSIX path of thePath
-    on error
-        return "ERROR: Kein PDF geöffnet"
-    end try
-end tell
-APPLESCRIPT
-)
-
-echo "PDF-Pfad: $pdf_path"
-
-if [[ "$pdf_path" == ERROR* ]]; then
-    show_error "$pdf_path"
-    exit 1
-fi
-
-if [ ! -f "$pdf_path" ]; then
-    show_error "Datei nicht gefunden: $pdf_path"
-    exit 1
-fi
-
-# Verarbeite basierend auf Auswahl
+# Frage nach Parametern VOR der Schleife
 if [[ "$choice" == "Verkleinern (Skalieren)" ]]; then
-    # === VERKLEINERN ===
-
-    # Frage nach Prozent
+    # Frage nach Prozent (einmal für alle Dateien)
     scale_percent=$(osascript 2>&1 <<'APPLESCRIPT'
 set thePercent to text returned of (display dialog "Auf wieviel % soll das PDF skaliert werden?" default answer "50" with title "PDF Verkleinern")
 return thePercent
@@ -173,9 +161,68 @@ APPLESCRIPT
         exit 1
     fi
 
-    notify "Verkleinere PDF" "Skaliere auf ${scale_percent}%..."
-
     scale_factor=$(echo "scale=4; $scale_percent / 100" | bc)
+else
+    # Frage nach Qualität (einmal für alle Dateien)
+    quality_choice=$(osascript 2>&1 <<'APPLESCRIPT'
+try
+    set theChoice to button returned of (display dialog "Wähle die Qualität:" buttons {"Normal (200 DPI)", "Hoch (300 DPI)", "Eigener Wert"} default button 2 with title "PDF Optimierer")
+    return theChoice
+on error
+    return "ABGEBROCHEN"
+end try
+APPLESCRIPT
+    )
+
+    if [[ "$quality_choice" == "ABGEBROCHEN" ]] || [[ "$quality_choice" == *"User canceled"* ]]; then
+        exit 0
+    fi
+
+    # Setze DPI basierend auf Auswahl
+    if [[ "$quality_choice" == "Hoch (300 DPI)" ]]; then
+        DPI=300
+        DPI_DESC="300 DPI"
+    elif [[ "$quality_choice" == "Normal (200 DPI)" ]]; then
+        DPI=200
+        DPI_DESC="200 DPI"
+    elif [[ "$quality_choice" == "Eigener Wert" ]]; then
+        # Frage nach eigenem DPI-Wert
+        custom_dpi=$(osascript 2>&1 <<'APPLESCRIPT'
+set theDPI to text returned of (display dialog "Eigenen DPI-Wert eingeben:" default answer "250" with title "PDF Optimierer")
+return theDPI
+APPLESCRIPT
+        )
+
+        if [ -z "$custom_dpi" ] || ! [[ "$custom_dpi" =~ ^[0-9]+$ ]]; then
+            show_error "Ungültiger DPI-Wert!"
+            exit 1
+        fi
+
+        DPI=$custom_dpi
+        DPI_DESC="${DPI} DPI"
+    else
+        # Fallback
+        DPI=200
+        DPI_DESC="200 DPI"
+    fi
+fi
+
+# Verarbeite jede Datei
+file_counter=0
+remember_choice=""
+while IFS= read -r pdf_path; do
+    file_counter=$((file_counter + 1))
+    echo ""
+    echo "=== Datei $file_counter/$file_count ==="
+    echo "PDF-Pfad: $pdf_path"
+
+    notify "Verarbeite $file_counter/$file_count" "$(basename "$pdf_path")"
+
+# Verarbeite basierend auf Auswahl
+if [[ "$choice" == "Verkleinern (Skalieren)" ]]; then
+    # === VERKLEINERN ===
+
+    notify "Verkleinere PDF" "Skaliere auf ${scale_percent}%..."
 
     output_dir=$(dirname "$pdf_path")
     base_name=$(basename "$pdf_path" .pdf)
@@ -239,8 +286,180 @@ except Exception as e:
 PYEND
 
     if [ -f "$output_path" ]; then
-        open -R "$output_path"
-        show_dialog "✅ PDF wurde verkleinert!\n\n$(basename "$output_path")"
+        # Frage ob Original ersetzt werden soll (falls nicht gespeichert)
+        if [ -z "$remember_choice" ]; then
+            output_basename=$(basename "$output_path")
+            if [ $file_count -gt 1 ]; then
+                # Bei mehreren Dateien: Option zum Merken anbieten
+                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
+set theDialog to display dialog "✅ PDF wurde verkleinert!
+
+$output_basename
+
+Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer ($file_counter/$file_count)" giving up after 60
+set theButton to button returned of theDialog
+set theCheckbox to false
+
+if theButton is not "" then
+    try
+        set checkResult to display dialog "Diese Auswahl für alle verbleibenden Dateien verwenden?" buttons {"Nein", "Ja, für alle merken"} default button 1 with title "PDF Optimierer"
+        if button returned of checkResult is "Ja, für alle merken" then
+            return theButton & "|REMEMBER"
+        else
+            return theButton
+        end if
+    on error
+        return theButton
+    end try
+else
+    return "Beide behalten"
+end if
+APPLESCRIPT
+                )
+
+                # Prüfe ob Auswahl gemerkt werden soll
+                if [[ "$replace_choice" == *"|REMEMBER" ]]; then
+                    remember_choice="${replace_choice%|REMEMBER}"
+                    replace_choice="$remember_choice"
+                fi
+            else
+                # Bei einzelner Datei: einfacher Dialog
+                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
+set theChoice to button returned of (display dialog "✅ PDF wurde verkleinert!
+
+$output_basename
+
+Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer")
+return theChoice
+APPLESCRIPT
+                )
+            fi
+        else
+            # Verwende gespeicherte Auswahl
+            replace_choice="$remember_choice"
+            echo "Verwende gespeicherte Auswahl: $replace_choice"
+        fi
+
+        if [[ "$replace_choice" == "Original ersetzen" ]]; then
+            echo "=== Original ersetzen ==="
+            echo "Original: '$pdf_path'"
+            echo "Neue Datei: '$output_path'"
+
+            # Prüfe ob Dateien existieren
+            if [ ! -f "$output_path" ]; then
+                echo "❌ Neue Datei existiert nicht!"
+                show_dialog "⚠️ Neue Datei nicht gefunden!"
+                exit 1
+            fi
+
+            # Benenne neue Datei um zum Originalnamen (mit Finder)
+            echo "Lösche Original..."
+            rm -f "$pdf_path"
+            echo "✓ Original gelöscht"
+
+            echo "Benenne neue Datei um mit osascript/Finder..."
+            # Verwende Finder/osascript um Berechtigungsprobleme zu umgehen
+            pdf_basename=$(basename "$pdf_path")
+            rename_result=$(osascript 2>&1 <<RENAMESCRIPT
+tell application "Finder"
+    try
+        set sourceFile to POSIX file "$output_path" as alias
+        set targetName to "$pdf_basename"
+        set name of sourceFile to targetName
+        return "SUCCESS"
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+RENAMESCRIPT
+            )
+
+            echo "Rename Result: $rename_result"
+
+            if [[ "$rename_result" == "SUCCESS" ]]; then
+                echo "✓ Original wurde ersetzt"
+                open -R "$pdf_path"
+            else
+                echo "❌ Finder-Umbenennung fehlgeschlagen: $rename_result"
+                echo "Die neue Datei heißt: $(basename "$output_path")"
+                show_dialog "⚠️ Original wurde gelöscht, aber Umbenennung fehlgeschlagen!\n\nNeue Datei: $(basename "$output_path")\n\nBitte manuell umbenennen."
+                open -R "$output_path"
+            fi
+        elif [[ "$replace_choice" == "Original umbenennen" ]]; then
+            echo "=== Original umbenennen ==="
+            echo "Original: '$pdf_path'"
+            echo "Neue Datei: '$output_path'"
+
+            # Prüfe ob Dateien existieren
+            if [ ! -f "$output_path" ]; then
+                echo "❌ Neue Datei existiert nicht!"
+                show_dialog "⚠️ Neue Datei nicht gefunden!"
+                exit 1
+            fi
+
+            # Benenne Original um zu _original
+            output_dir=$(dirname "$pdf_path")
+            base_name=$(basename "$pdf_path" .pdf)
+            original_backup="${output_dir}/${base_name}_original.pdf"
+
+            echo "Benenne Original um zu: $original_backup"
+            pdf_basename=$(basename "$pdf_path")
+            original_basename=$(basename "$original_backup")
+
+            rename_original=$(osascript 2>&1 <<RENAMEORIGINAL
+tell application "Finder"
+    try
+        set sourceFile to POSIX file "$pdf_path" as alias
+        set targetName to "$original_basename"
+        set name of sourceFile to targetName
+        return "SUCCESS"
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+RENAMEORIGINAL
+            )
+
+            if [[ "$rename_original" == "SUCCESS" ]]; then
+                echo "✓ Original umbenannt zu _original"
+
+                # Benenne neue Datei um zum Originalnamen
+                echo "Benenne neue Datei um zum Originalnamen..."
+                rename_new=$(osascript 2>&1 <<RENAMENEW
+tell application "Finder"
+    try
+        set sourceFile to POSIX file "$output_path" as alias
+        set targetName to "$pdf_basename"
+        set name of sourceFile to targetName
+        return "SUCCESS"
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+RENAMENEW
+                )
+
+                if [[ "$rename_new" == "SUCCESS" ]]; then
+                    echo "✓ Neue Datei umbenannt zum Originalnamen"
+                    open -R "$pdf_path"
+                else
+                    echo "❌ Umbenennung der neuen Datei fehlgeschlagen: $rename_new"
+                    show_dialog "⚠️ Original wurde umbenannt, aber neue Datei konnte nicht umbenannt werden!\n\nBitte manuell umbenennen."
+                    open -R "$output_path"
+                fi
+            else
+                echo "❌ Umbenennung des Originals fehlgeschlagen: $rename_original"
+                show_dialog "⚠️ Original konnte nicht umbenannt werden!"
+                open -R "$pdf_path"
+            fi
+        elif [[ "$replace_choice" == "Beide behalten" ]]; then
+            # Zeige neue Datei im Finder
+            open -R "$output_path"
+        else
+            # Abgebrochen - lösche neue Datei
+            rm "$output_path"
+            echo "✓ Abgebrochen, neue Datei gelöscht"
+        fi
     else
         show_error "PDF wurde nicht erstellt"
         exit 1
@@ -248,26 +467,6 @@ PYEND
 
 else
     # === GLÄTTEN FÜR FILEMAKER ===
-
-    # Frage nach Qualität
-    quality_choice=$(osascript 2>&1 <<'APPLESCRIPT'
-set theChoice to button returned of (display dialog "Wähle die Qualität:" buttons {"Abbrechen", "Normal (200 DPI)", "Hoch (300 DPI)"} default button 3 with title "PDF Optimierer")
-return theChoice
-APPLESCRIPT
-    )
-
-    if [[ "$quality_choice" == "Abbrechen" ]]; then
-        exit 0
-    fi
-
-    # Setze DPI basierend auf Auswahl
-    if [[ "$quality_choice" == "Hoch (300 DPI)" ]]; then
-        DPI=300
-        DPI_DESC="300 DPI"
-    else
-        DPI=200
-        DPI_DESC="200 DPI"
-    fi
 
     notify "Glätten für FileMaker" "Verarbeite mit $DPI_DESC..."
 
@@ -307,8 +506,6 @@ try:
     original_metadata = doc.metadata
     print(f"Original-Metadaten: {original_metadata}")
 
-    subprocess.run(['osascript', '-e', f'display notification "Rendere {num_pages} Seite(n)..." with title "PDF Optimierer" subtitle "Schritt 1/3"'])
-
     temp_dir = tempfile.mkdtemp()
     page_info = []
 
@@ -327,9 +524,32 @@ try:
         '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4',
         f'-sOutputFile={png_pattern}', pdf_path
     ]
-    subprocess.run(gs_cmd, capture_output=True)
 
-    subprocess.run(['osascript', '-e', f'display notification "Optimiere Kontrast..." with title "PDF Optimierer" subtitle "Schritt 2/3"'])
+    # Starte Ghostscript im Hintergrund
+    gs_proc = subprocess.Popen(gs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Zeige Popup während Ghostscript läuft (60 Sek timeout)
+    popup_proc = subprocess.Popen(['osascript', '-e', '''
+        display dialog "⏳ Rendere Seiten mit Ghostscript...
+
+Bitte warten Sie, dieser Vorgang kann einige Sekunden dauern." with title "PDF Optimierer" buttons {"Läuft..."} default button 1 giving up after 60
+    '''])
+
+    # Warte auf Ghostscript
+    gs_proc.wait()
+
+    # Beende vorheriges Popup falls noch aktiv
+    try:
+        popup_proc.terminate()
+    except:
+        pass
+
+    # Zeige Kontrast-Popup (60 Sek timeout)
+    popup_proc = subprocess.Popen(['osascript', '-e', '''
+        display dialog "🎨 Optimiere Kontrast und Schärfe...
+
+Fast fertig!" with title "PDF Optimierer" buttons {"Läuft..."} default button 1 giving up after 60
+    '''])
 
     output_doc = fitz.open()
 
@@ -355,7 +575,18 @@ try:
         img_rect = fitz.Rect(0, 0, info['width'], info['height'])
         new_page.insert_image(img_rect, filename=optimized_png)
 
-    subprocess.run(['osascript', '-e', f'display notification "Speichere PDF..." with title "PDF Optimierer" subtitle "Schritt 3/3"'])
+    # Beende vorheriges Popup
+    try:
+        popup_proc.terminate()
+    except:
+        pass
+
+    # Zeige Speicher-Popup (60 Sek timeout)
+    popup_proc = subprocess.Popen(['osascript', '-e', '''
+        display dialog "💾 Speichere PDF...
+
+Noch einen Moment!" with title "PDF Optimierer" buttons {"Läuft..."} default button 1 giving up after 60
+    '''])
 
     # Setze Metadaten vom Original
     print(f"Setze Metadaten: {original_metadata}")
@@ -364,6 +595,12 @@ try:
     output_doc.save(output_path, garbage=4, deflate=True, deflate_images=False)
     output_doc.close()
     shutil.rmtree(temp_dir)
+
+    # Beende Speicher-Popup
+    try:
+        popup_proc.terminate()
+    except:
+        pass
 
     size = os.path.getsize(output_path)
     print(f"✓ PDF erstellt ({size:,} Bytes)")
@@ -381,13 +618,188 @@ PYEND
     if [ -f "$output_path" ]; then
         echo "✓ Metadaten wurden direkt in Python gesetzt"
 
-        open -R "$output_path"
-        show_dialog "✅ PDF wurde geglättet!\n\n$(basename "$output_path")"
+        # Frage ob Original ersetzt werden soll (falls nicht gespeichert)
+        if [ -z "$remember_choice" ]; then
+            output_basename=$(basename "$output_path")
+            if [ $file_count -gt 1 ]; then
+                # Bei mehreren Dateien: Option zum Merken anbieten
+                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
+set theDialog to display dialog "✅ PDF wurde geglättet!
+
+$output_basename
+
+Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer ($file_counter/$file_count)" giving up after 60
+set theButton to button returned of theDialog
+set theCheckbox to false
+
+if theButton is not "" then
+    try
+        set checkResult to display dialog "Diese Auswahl für alle verbleibenden Dateien verwenden?" buttons {"Nein", "Ja, für alle merken"} default button 1 with title "PDF Optimierer"
+        if button returned of checkResult is "Ja, für alle merken" then
+            return theButton & "|REMEMBER"
+        else
+            return theButton
+        end if
+    on error
+        return theButton
+    end try
+else
+    return "Beide behalten"
+end if
+APPLESCRIPT
+                )
+
+                # Prüfe ob Auswahl gemerkt werden soll
+                if [[ "$replace_choice" == *"|REMEMBER" ]]; then
+                    remember_choice="${replace_choice%|REMEMBER}"
+                    replace_choice="$remember_choice"
+                fi
+            else
+                # Bei einzelner Datei: einfacher Dialog
+                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
+set theChoice to button returned of (display dialog "✅ PDF wurde geglättet!
+
+$output_basename
+
+Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer")
+return theChoice
+APPLESCRIPT
+                )
+            fi
+        else
+            # Verwende gespeicherte Auswahl
+            replace_choice="$remember_choice"
+            echo "Verwende gespeicherte Auswahl: $replace_choice"
+        fi
+
+        if [[ "$replace_choice" == "Original ersetzen" ]]; then
+            echo "=== Original ersetzen ==="
+            echo "Original: '$pdf_path'"
+            echo "Neue Datei: '$output_path'"
+
+            # Prüfe ob Dateien existieren
+            if [ ! -f "$output_path" ]; then
+                echo "❌ Neue Datei existiert nicht!"
+                show_dialog "⚠️ Neue Datei nicht gefunden!"
+                exit 1
+            fi
+
+            # Benenne neue Datei um zum Originalnamen (mit Finder)
+            echo "Lösche Original..."
+            rm -f "$pdf_path"
+            echo "✓ Original gelöscht"
+
+            echo "Benenne neue Datei um mit osascript/Finder..."
+            # Verwende Finder/osascript um Berechtigungsprobleme zu umgehen
+            pdf_basename=$(basename "$pdf_path")
+            rename_result=$(osascript 2>&1 <<RENAMESCRIPT
+tell application "Finder"
+    try
+        set sourceFile to POSIX file "$output_path" as alias
+        set targetName to "$pdf_basename"
+        set name of sourceFile to targetName
+        return "SUCCESS"
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+RENAMESCRIPT
+            )
+
+            echo "Rename Result: $rename_result"
+
+            if [[ "$rename_result" == "SUCCESS" ]]; then
+                echo "✓ Original wurde ersetzt"
+                open -R "$pdf_path"
+            else
+                echo "❌ Finder-Umbenennung fehlgeschlagen: $rename_result"
+                echo "Die neue Datei heißt: $(basename "$output_path")"
+                show_dialog "⚠️ Original wurde gelöscht, aber Umbenennung fehlgeschlagen!\n\nNeue Datei: $(basename "$output_path")\n\nBitte manuell umbenennen."
+                open -R "$output_path"
+            fi
+        elif [[ "$replace_choice" == "Original umbenennen" ]]; then
+            echo "=== Original umbenennen ==="
+            echo "Original: '$pdf_path'"
+            echo "Neue Datei: '$output_path'"
+
+            # Prüfe ob Dateien existieren
+            if [ ! -f "$output_path" ]; then
+                echo "❌ Neue Datei existiert nicht!"
+                show_dialog "⚠️ Neue Datei nicht gefunden!"
+                exit 1
+            fi
+
+            # Benenne Original um zu _original
+            output_dir=$(dirname "$pdf_path")
+            base_name=$(basename "$pdf_path" .pdf)
+            original_backup="${output_dir}/${base_name}_original.pdf"
+
+            echo "Benenne Original um zu: $original_backup"
+            pdf_basename=$(basename "$pdf_path")
+            original_basename=$(basename "$original_backup")
+
+            rename_original=$(osascript 2>&1 <<RENAMEORIGINAL
+tell application "Finder"
+    try
+        set sourceFile to POSIX file "$pdf_path" as alias
+        set targetName to "$original_basename"
+        set name of sourceFile to targetName
+        return "SUCCESS"
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+RENAMEORIGINAL
+            )
+
+            if [[ "$rename_original" == "SUCCESS" ]]; then
+                echo "✓ Original umbenannt zu _original"
+
+                # Benenne neue Datei um zum Originalnamen
+                echo "Benenne neue Datei um zum Originalnamen..."
+                rename_new=$(osascript 2>&1 <<RENAMENEW
+tell application "Finder"
+    try
+        set sourceFile to POSIX file "$output_path" as alias
+        set targetName to "$pdf_basename"
+        set name of sourceFile to targetName
+        return "SUCCESS"
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+RENAMENEW
+                )
+
+                if [[ "$rename_new" == "SUCCESS" ]]; then
+                    echo "✓ Neue Datei umbenannt zum Originalnamen"
+                    open -R "$pdf_path"
+                else
+                    echo "❌ Umbenennung der neuen Datei fehlgeschlagen: $rename_new"
+                    show_dialog "⚠️ Original wurde umbenannt, aber neue Datei konnte nicht umbenannt werden!\n\nBitte manuell umbenennen."
+                    open -R "$output_path"
+                fi
+            else
+                echo "❌ Umbenennung des Originals fehlgeschlagen: $rename_original"
+                show_dialog "⚠️ Original konnte nicht umbenannt werden!"
+                open -R "$pdf_path"
+            fi
+        elif [[ "$replace_choice" == "Beide behalten" ]]; then
+            # Zeige neue Datei im Finder
+            open -R "$output_path"
+        else
+            # Abgebrochen - lösche neue Datei
+            rm "$output_path"
+            echo "✓ Abgebrochen, neue Datei gelöscht"
+        fi
     else
         show_error "PDF wurde nicht erstellt"
         exit 1
     fi
 fi
 
+done <<< "$pdf_paths"
+
 echo ""
 echo "=== FERTIG ==="
+notify "Fertig!" "Alle $file_count Datei(en) verarbeitet"
