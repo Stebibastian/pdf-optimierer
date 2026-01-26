@@ -33,7 +33,7 @@ Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und
 ### Für Endbenutzer (Einfach)
 
 **Option 1: Direct Download (Empfohlen)**
-1. **[📥 Download PDF Optimierer v1.0.1](https://github.com/Stebibastian/pdf-optimierer/releases/latest/download/PDF_Optimierer_v1.0.1.zip)** (nur die App, ~5 KB)
+1. **[📥 Download PDF Optimierer (Latest)](https://github.com/Stebibastian/pdf-optimierer/releases/latest)** (nur die App, ~5 KB)
 2. Entpacke die ZIP-Datei
 3. **Doppelklick auf `PDF Optimierer.app`**
 5. **Bei Sicherheitswarnung (nur beim ersten Mal!):**
