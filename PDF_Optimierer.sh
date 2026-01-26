@@ -277,6 +277,41 @@ APPLESCRIPT
         DPI=200
         DPI_DESC="200 DPI"
     fi
+
+    # Prüfe zusätzliche Dependencies für Glätten
+    echo "Prüfe Dependencies für Glätten-Funktion..."
+    MISSING_DEPS=""
+
+    if ! command -v gs &> /dev/null; then
+        MISSING_DEPS="${MISSING_DEPS}• Ghostscript (gs)\n"
+    fi
+
+    if ! /opt/homebrew/bin/python3 -c "import fitz" 2>/dev/null; then
+        MISSING_DEPS="${MISSING_DEPS}• PyMuPDF (Python-Bibliothek)\n"
+    fi
+
+    if ! /opt/homebrew/bin/python3 -c "from PIL import Image" 2>/dev/null; then
+        MISSING_DEPS="${MISSING_DEPS}• Pillow (Python-Bibliothek)\n"
+    fi
+
+    if [ -n "$MISSING_DEPS" ]; then
+        osascript <<MISSING
+display dialog "⚠️ Fehlende Abhängigkeiten!
+
+Für die Glätten-Funktion fehlen:
+
+$MISSING_DEPS
+Bitte installiere diese manuell im Terminal:
+
+brew install ghostscript
+pip3 install PyMuPDF Pillow --break-system-packages
+
+Oder führe die Installation erneut aus." buttons {"OK"} default button 1 with title "PDF Optimierer" with icon stop
+MISSING
+        exit 1
+    fi
+
+    echo "✓ Alle Dependencies für Glätten vorhanden"
 fi
 
 # Verarbeite jede Datei
