@@ -2,7 +2,7 @@
 
 Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und technische Zeichnungen.
 
-[![Download](https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge)](https://github.com/Stebibastian/pdf-optimierer/archive/refs/heads/main.zip)
+[![Download](https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge)](https://github.com/Stebibastian/pdf-optimierer/releases/latest/download/PDF_Optimierer_v1.0.1.zip)
 [![macOS](https://img.shields.io/badge/macOS-10.15+-000000?style=flat-square&logo=apple)](https://www.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
@@ -33,10 +33,9 @@ Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und
 ### Für Endbenutzer (Einfach)
 
 **Option 1: Direct Download (Empfohlen)**
-1. **[📥 Download PDF Optimierer.zip](https://github.com/Stebibastian/pdf-optimierer/archive/refs/heads/main.zip)**
+1. **[📥 Download PDF Optimierer v1.0.1](https://github.com/Stebibastian/pdf-optimierer/releases/latest/download/PDF_Optimierer_v1.0.1.zip)** (nur die App, ~5 KB)
 2. Entpacke die ZIP-Datei
-3. Öffne den Ordner `pdf-optimierer-main`
-4. **Doppelklick auf `PDF Optimierer.app`**
+3. **Doppelklick auf `PDF Optimierer.app`**
 5. **Bei Sicherheitswarnung (nur beim ersten Mal!):**
 
    macOS blockiert die App. **So öffnest du sie:**
