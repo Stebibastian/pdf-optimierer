@@ -44,3 +44,7 @@ test_*.pdf
 # Backup files
 *_original
 *.bak
+
+# Release files (nur in GitHub Releases, nicht im Repo)
+*.zip
+PDF_Optimierer_v*.zip
