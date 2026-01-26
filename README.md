@@ -62,7 +62,7 @@ open "PDF Optimierer.app"
 - Ca. 500 MB freier Speicherplatz
 
 ### Was wird automatisch installiert?
-Beim ersten Start installiert die App:
+Beim ersten Start installiert die App automatisch:
 - ✅ Homebrew (falls nicht vorhanden)
 - ✅ Ghostscript
 - ✅ ImageMagick
@@ -70,9 +70,35 @@ Beim ersten Start installiert die App:
 - ✅ PyMuPDF (Python-Paket)
 - ✅ Pillow (Python-Paket)
 
-3. **Bei Sicherheitswarnung:**
-   - Rechtsklick auf die App → "Öffnen"
-   - Oder: Systemeinstellungen → Sicherheit → "Trotzdem öffnen"
+⏱️ **Hinweis:** Die Installation kann beim ersten Start 5-10 Minuten dauern. Du wirst über den Fortschritt per Benachrichtigung informiert.
+
+### Manuelle Installation (falls automatisch fehlschlägt)
+
+Falls die automatische Installation nicht funktioniert:
+
+**1. Xcode Command Line Tools installieren:**
+```bash
+xcode-select --install
+```
+
+**2. Homebrew installieren:**
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+**3. Tools installieren:**
+```bash
+brew install ghostscript imagemagick exiftool python3
+```
+
+**4. Python-Pakete installieren:**
+```bash
+pip3 install PyMuPDF Pillow --break-system-packages
+```
+
+**5. App erneut starten**
+
+📋 **Bei Problemen:** Siehe Log-Datei `~/Desktop/pdf_optimierer.log`
 
 ## Verwendung
 
@@ -138,7 +164,45 @@ Beim ersten Start installiert die App:
 **Warum wird die App blockiert?**
 Die App ist nicht mit einem Apple Developer Zertifikat signiert (kostet $99/Jahr). Der komplette Quellcode ist hier auf GitHub einsehbar und Open Source - die App ist sicher zu verwenden.
 
+### ❌ "Installation fehlgeschlagen"
+
+**Problem:** Die automatische Installation der Tools schlägt fehl.
+
+**Häufigste Ursachen:**
+
+1. **Xcode Command Line Tools fehlen:**
+   ```bash
+   xcode-select --install
+   ```
+   Warte bis die Installation abgeschlossen ist, dann App erneut starten.
+
+2. **Netzwerkprobleme:** Stelle sicher, dass eine Internetverbindung besteht.
+
+3. **Berechtigungen:** Das Terminal-Fenster öffnet sich evtl. und fragt nach dem Admin-Passwort.
+
+**Manuelle Installation (siehe oben):** Falls die automatische Installation mehrfach fehlschlägt, verwende die manuelle Installation.
+
+### ❌ "PDF wurde nicht erstellt"
+
+**Problem:** Die App läuft durch, aber das PDF wird nicht erstellt.
+
+**Lösung:**
+1. Prüfe die **Log-Datei** auf dem Desktop: `pdf_optimierer.log`
+2. Häufigste Ursachen:
+   - **Kein PDF in Preview geöffnet** → Öffne erst ein PDF in Preview
+   - **Python-Pakete fehlen** → Siehe "Installation fehlgeschlagen"
+   - **Schreibrechte fehlen** → Stelle sicher, dass du Schreibrechte im PDF-Ordner hast
+   - **Festplatte voll** → Prüfe freien Speicherplatz (mind. 500 MB)
+
+3. **Debugging:**
+   ```bash
+   # Script direkt im Terminal testen
+   cd "/Pfad/zum/Ordner"
+   ./PDF_Optimierer.sh
+   ```
+
 ### App startet nicht
+
 1. Prüfe die Log-Datei: `~/Desktop/pdf_optimierer.log`
 2. Stelle sicher, dass Preview ein PDF geöffnet hat
 3. Gib der App Ausführungsrechte:
@@ -149,20 +213,7 @@ Die App ist nicht mit einem Apple Developer Zertifikat signiert (kostet $99/Jahr
 ### "Permission denied" Fehler
 ```bash
 chmod +x PDF_Optimierer.sh
-```
-
-### Dependencies manuell installieren
-Falls die automatische Installation fehlschlägt:
-
-```bash
-# Homebrew installieren
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Tools installieren
-brew install ghostscript imagemagick exiftool
-
-# Python-Pakete installieren
-pip3 install PyMuPDF Pillow --break-system-packages
+chmod +x "PDF Optimierer.app/Contents/MacOS/PDF_Optimierer"
 ```
 
 ### Metadaten fehlen
