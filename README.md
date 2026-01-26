@@ -2,7 +2,7 @@
 
 Eine macOS App zum Glätten und Skalieren von PDFs, optimiert für FileMaker und technische Zeichnungen.
 
-[![Download](https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge)](https://github.com/Stebibastian/pdf-optimierer/releases/latest/download/PDF_Optimierer_v1.0.1.zip)
+[![Download](https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge)](https://github.com/Stebibastian/pdf-optimierer/releases/latest)
 [![macOS](https://img.shields.io/badge/macOS-10.15+-000000?style=flat-square&logo=apple)](https://www.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
