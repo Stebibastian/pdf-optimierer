@@ -179,7 +179,7 @@ notify "Bereit!" "Alle Tools sind installiert"
 echo ""
 
 # Schritt 2: Wähle PDF-Datei(en)
-pdf_paths=$(osascript 2>&1 <<'APPLESCRIPT'
+pdf_paths=$(osascript <<'APPLESCRIPT' 2>/dev/null
 try
     set thePDFs to choose file with prompt "Wähle PDF-Datei(en) zum Optimieren:" of type {"com.adobe.pdf"} with multiple selections allowed
     set posixPaths to {}
@@ -203,7 +203,7 @@ file_count=$(echo "$pdf_paths" | wc -l | tr -d ' ')
 echo "Anzahl Dateien: $file_count"
 
 # Schritt 3: Zeige Auswahl-Dialog
-choice=$(osascript 2>&1 <<APPLESCRIPT
+choice=$(osascript <<APPLESCRIPT 2>/dev/null
 try
     set theChoice to button returned of (display dialog "Was möchten Sie tun mit $file_count Datei(en)?" buttons {"Abbrechen", "Verkleinern (Skalieren)", "Glätten für FileMaker"} default button 3 with title "PDF Optimierer")
     return theChoice
@@ -222,7 +222,7 @@ fi
 # Frage nach Parametern VOR der Schleife
 if [[ "$choice" == "Verkleinern (Skalieren)" ]]; then
     # Frage nach Prozent (einmal für alle Dateien)
-    scale_percent=$(osascript 2>&1 <<'APPLESCRIPT'
+    scale_percent=$(osascript <<'APPLESCRIPT' 2>/dev/null
 set thePercent to text returned of (display dialog "Auf wieviel % soll das PDF skaliert werden?" default answer "50" with title "PDF Verkleinern")
 return thePercent
 APPLESCRIPT
@@ -236,7 +236,7 @@ APPLESCRIPT
     scale_factor=$(echo "scale=4; $scale_percent / 100" | bc)
 else
     # Frage nach Qualität (einmal für alle Dateien)
-    quality_choice=$(osascript 2>&1 <<'APPLESCRIPT'
+    quality_choice=$(osascript <<'APPLESCRIPT' 2>/dev/null
 try
     set theChoice to button returned of (display dialog "Wähle die Qualität:" buttons {"Normal (200 DPI)", "Hoch (300 DPI)", "Eigener Wert"} default button 2 with title "PDF Optimierer")
     return theChoice
@@ -259,7 +259,7 @@ APPLESCRIPT
         DPI_DESC="200 DPI"
     elif [[ "$quality_choice" == "Eigener Wert" ]]; then
         # Frage nach eigenem DPI-Wert
-        custom_dpi=$(osascript 2>&1 <<'APPLESCRIPT'
+        custom_dpi=$(osascript <<'APPLESCRIPT' 2>/dev/null
 set theDPI to text returned of (display dialog "Eigenen DPI-Wert eingeben:" default answer "250" with title "PDF Optimierer")
 return theDPI
 APPLESCRIPT
