@@ -289,8 +289,10 @@ exiftool Original.pdf
 PDF Optimierer.app/
 ├── Contents/
 │   ├── Info.plist
-│   └── MacOS/
-│       └── PDF_Optimierer (Shell Script)
+│   ├── MacOS/
+│   │   └── PDF_Optimierer (Shell Script)
+│   └── Resources/
+│       └── AppIcon.icns (App-Icon)
 ```
 
 ### Workflow: Glätten für FileMaker
@@ -347,6 +349,7 @@ PDF Optimierer.app/
 pdf-optimierer/
 ├── README.md                    # Diese Datei
 ├── PDF_Optimierer.sh           # Haupt-Script
+├── AppIcon.png                 # App-Icon Quelldatei (1024x1024)
 ├── PDF Optimierer.app/         # macOS App Bundle
 └── pdf_optimierer.log          # Log-Datei (generiert)
 ```
