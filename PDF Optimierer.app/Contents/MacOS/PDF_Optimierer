@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# Auf Apple Silicon: Sicherstellen, dass wir nativ (ARM) laufen, nicht unter Rosetta
+# .app-Bundles können unter Rosetta starten, was brew install verhindert
+if [ "$(uname -m)" = "x86_64" ] && [ -d /opt/homebrew ]; then
+    exec arch -arm64 /bin/bash "$0" "$@"
+fi
+
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 # Homebrew Shell-Umgebung laden (für aktuelle Session)
@@ -630,7 +637,6 @@ fi
 
 # Verarbeite jede Datei
 file_counter=0
-remember_choice=""
 while IFS= read -r pdf_path; do
     file_counter=$((file_counter + 1))
     echo ""
@@ -709,127 +715,21 @@ except Exception as e:
 PYEND
 
     if [ -f "$output_path" ]; then
-        # Frage ob Original ersetzt werden soll (falls nicht gespeichert)
-        if [ -z "$remember_choice" ]; then
-            output_basename=$(basename "$output_path")
-            if [ $file_count -gt 1 ]; then
-                # Bei mehreren Dateien: Option zum Merken anbieten
-                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
-set theDialog to display dialog "✅ PDF wurde verkleinert!
+        # Automatisch: Original umbenennen, neue Datei bekommt Originalnamen
+        echo "=== Original umbenennen ==="
+        echo "Original: '$pdf_path'"
+        echo "Neue Datei: '$output_path'"
 
-$output_basename
+        # Benenne Original um zu _original
+        output_dir=$(dirname "$pdf_path")
+        base_name=$(basename "$pdf_path" .pdf)
+        original_backup="${output_dir}/${base_name}_original.pdf"
 
-Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer ($file_counter/$file_count)" giving up after 60
-set theButton to button returned of theDialog
-set theCheckbox to false
+        echo "Benenne Original um zu: $original_backup"
+        pdf_basename=$(basename "$pdf_path")
+        original_basename=$(basename "$original_backup")
 
-if theButton is not "" then
-    try
-        set checkResult to display dialog "Diese Auswahl für alle verbleibenden Dateien verwenden?" buttons {"Nein", "Ja, für alle merken"} default button 1 with title "PDF Optimierer"
-        if button returned of checkResult is "Ja, für alle merken" then
-            return theButton & "|REMEMBER"
-        else
-            return theButton
-        end if
-    on error
-        return theButton
-    end try
-else
-    return "Beide behalten"
-end if
-APPLESCRIPT
-                )
-
-                # Prüfe ob Auswahl gemerkt werden soll
-                if [[ "$replace_choice" == *"|REMEMBER" ]]; then
-                    remember_choice="${replace_choice%|REMEMBER}"
-                    replace_choice="$remember_choice"
-                fi
-            else
-                # Bei einzelner Datei: einfacher Dialog
-                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
-set theChoice to button returned of (display dialog "✅ PDF wurde verkleinert!
-
-$output_basename
-
-Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer")
-return theChoice
-APPLESCRIPT
-                )
-            fi
-        else
-            # Verwende gespeicherte Auswahl
-            replace_choice="$remember_choice"
-            echo "Verwende gespeicherte Auswahl: $replace_choice"
-        fi
-
-        if [[ "$replace_choice" == "Original ersetzen" ]]; then
-            echo "=== Original ersetzen ==="
-            echo "Original: '$pdf_path'"
-            echo "Neue Datei: '$output_path'"
-
-            # Prüfe ob Dateien existieren
-            if [ ! -f "$output_path" ]; then
-                echo "❌ Neue Datei existiert nicht!"
-                show_dialog "⚠️ Neue Datei nicht gefunden!"
-                exit 1
-            fi
-
-            # Benenne neue Datei um zum Originalnamen (mit Finder)
-            echo "Lösche Original..."
-            rm -f "$pdf_path"
-            echo "✓ Original gelöscht"
-
-            echo "Benenne neue Datei um mit osascript/Finder..."
-            # Verwende Finder/osascript um Berechtigungsprobleme zu umgehen
-            pdf_basename=$(basename "$pdf_path")
-            rename_result=$(osascript 2>&1 <<RENAMESCRIPT
-tell application "Finder"
-    try
-        set sourceFile to POSIX file "$output_path" as alias
-        set targetName to "$pdf_basename"
-        set name of sourceFile to targetName
-        return "SUCCESS"
-    on error errMsg
-        return "ERROR: " & errMsg
-    end try
-end tell
-RENAMESCRIPT
-            )
-
-            echo "Rename Result: $rename_result"
-
-            if [[ "$rename_result" == "SUCCESS" ]]; then
-                echo "✓ Original wurde ersetzt"
-                open -R "$pdf_path"
-            else
-                echo "❌ Finder-Umbenennung fehlgeschlagen: $rename_result"
-                echo "Die neue Datei heißt: $(basename "$output_path")"
-                show_dialog "⚠️ Original wurde gelöscht, aber Umbenennung fehlgeschlagen!\n\nNeue Datei: $(basename "$output_path")\n\nBitte manuell umbenennen."
-                open -R "$output_path"
-            fi
-        elif [[ "$replace_choice" == "Original umbenennen" ]]; then
-            echo "=== Original umbenennen ==="
-            echo "Original: '$pdf_path'"
-            echo "Neue Datei: '$output_path'"
-
-            # Prüfe ob Dateien existieren
-            if [ ! -f "$output_path" ]; then
-                echo "❌ Neue Datei existiert nicht!"
-                show_dialog "⚠️ Neue Datei nicht gefunden!"
-                exit 1
-            fi
-
-            # Benenne Original um zu _original
-            output_dir=$(dirname "$pdf_path")
-            base_name=$(basename "$pdf_path" .pdf)
-            original_backup="${output_dir}/${base_name}_original.pdf"
-
-            echo "Benenne Original um zu: $original_backup"
-            pdf_basename=$(basename "$pdf_path")
-            original_basename=$(basename "$original_backup")
-
-            rename_original=$(osascript 2>&1 <<RENAMEORIGINAL
+        rename_original=$(osascript 2>&1 <<RENAMEORIGINAL
 tell application "Finder"
     try
         set sourceFile to POSIX file "$pdf_path" as alias
@@ -841,14 +741,14 @@ tell application "Finder"
     end try
 end tell
 RENAMEORIGINAL
-            )
+        )
 
-            if [[ "$rename_original" == "SUCCESS" ]]; then
-                echo "✓ Original umbenannt zu _original"
+        if [[ "$rename_original" == "SUCCESS" ]]; then
+            echo "✓ Original umbenannt zu _original"
 
-                # Benenne neue Datei um zum Originalnamen
-                echo "Benenne neue Datei um zum Originalnamen..."
-                rename_new=$(osascript 2>&1 <<RENAMENEW
+            # Benenne neue Datei um zum Originalnamen
+            echo "Benenne neue Datei um zum Originalnamen..."
+            rename_new=$(osascript 2>&1 <<RENAMENEW
 tell application "Finder"
     try
         set sourceFile to POSIX file "$output_path" as alias
@@ -860,28 +760,20 @@ tell application "Finder"
     end try
 end tell
 RENAMENEW
-                )
+            )
 
-                if [[ "$rename_new" == "SUCCESS" ]]; then
-                    echo "✓ Neue Datei umbenannt zum Originalnamen"
-                    open -R "$pdf_path"
-                else
-                    echo "❌ Umbenennung der neuen Datei fehlgeschlagen: $rename_new"
-                    show_dialog "⚠️ Original wurde umbenannt, aber neue Datei konnte nicht umbenannt werden!\n\nBitte manuell umbenennen."
-                    open -R "$output_path"
-                fi
-            else
-                echo "❌ Umbenennung des Originals fehlgeschlagen: $rename_original"
-                show_dialog "⚠️ Original konnte nicht umbenannt werden!"
+            if [[ "$rename_new" == "SUCCESS" ]]; then
+                echo "✓ Neue Datei umbenannt zum Originalnamen"
                 open -R "$pdf_path"
+            else
+                echo "❌ Umbenennung der neuen Datei fehlgeschlagen: $rename_new"
+                show_dialog "⚠️ Original wurde umbenannt, aber neue Datei konnte nicht umbenannt werden!\n\nBitte manuell umbenennen."
+                open -R "$output_path"
             fi
-        elif [[ "$replace_choice" == "Beide behalten" ]]; then
-            # Zeige neue Datei im Finder
-            open -R "$output_path"
         else
-            # Abgebrochen - lösche neue Datei
-            rm "$output_path"
-            echo "✓ Abgebrochen, neue Datei gelöscht"
+            echo "❌ Umbenennung des Originals fehlgeschlagen: $rename_original"
+            show_dialog "⚠️ Original konnte nicht umbenannt werden!"
+            open -R "$pdf_path"
         fi
     else
         show_error "PDF wurde nicht erstellt"
@@ -1043,127 +935,21 @@ PYEND
     if [ -f "$output_path" ]; then
         echo "✓ Metadaten wurden direkt in Python gesetzt"
 
-        # Frage ob Original ersetzt werden soll (falls nicht gespeichert)
-        if [ -z "$remember_choice" ]; then
-            output_basename=$(basename "$output_path")
-            if [ $file_count -gt 1 ]; then
-                # Bei mehreren Dateien: Option zum Merken anbieten
-                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
-set theDialog to display dialog "✅ PDF wurde geglättet!
+        # Automatisch: Original umbenennen, neue Datei bekommt Originalnamen
+        echo "=== Original umbenennen ==="
+        echo "Original: '$pdf_path'"
+        echo "Neue Datei: '$output_path'"
 
-$output_basename
+        # Benenne Original um zu _original
+        output_dir=$(dirname "$pdf_path")
+        base_name=$(basename "$pdf_path" .pdf)
+        original_backup="${output_dir}/${base_name}_original.pdf"
 
-Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer ($file_counter/$file_count)" giving up after 60
-set theButton to button returned of theDialog
-set theCheckbox to false
+        echo "Benenne Original um zu: $original_backup"
+        pdf_basename=$(basename "$pdf_path")
+        original_basename=$(basename "$original_backup")
 
-if theButton is not "" then
-    try
-        set checkResult to display dialog "Diese Auswahl für alle verbleibenden Dateien verwenden?" buttons {"Nein", "Ja, für alle merken"} default button 1 with title "PDF Optimierer"
-        if button returned of checkResult is "Ja, für alle merken" then
-            return theButton & "|REMEMBER"
-        else
-            return theButton
-        end if
-    on error
-        return theButton
-    end try
-else
-    return "Beide behalten"
-end if
-APPLESCRIPT
-                )
-
-                # Prüfe ob Auswahl gemerkt werden soll
-                if [[ "$replace_choice" == *"|REMEMBER" ]]; then
-                    remember_choice="${replace_choice%|REMEMBER}"
-                    replace_choice="$remember_choice"
-                fi
-            else
-                # Bei einzelner Datei: einfacher Dialog
-                replace_choice=$(osascript 2>&1 <<APPLESCRIPT
-set theChoice to button returned of (display dialog "✅ PDF wurde geglättet!
-
-$output_basename
-
-Was möchten Sie tun?" buttons {"Beide behalten", "Original umbenennen", "Original ersetzen"} default button 2 with title "PDF Optimierer")
-return theChoice
-APPLESCRIPT
-                )
-            fi
-        else
-            # Verwende gespeicherte Auswahl
-            replace_choice="$remember_choice"
-            echo "Verwende gespeicherte Auswahl: $replace_choice"
-        fi
-
-        if [[ "$replace_choice" == "Original ersetzen" ]]; then
-            echo "=== Original ersetzen ==="
-            echo "Original: '$pdf_path'"
-            echo "Neue Datei: '$output_path'"
-
-            # Prüfe ob Dateien existieren
-            if [ ! -f "$output_path" ]; then
-                echo "❌ Neue Datei existiert nicht!"
-                show_dialog "⚠️ Neue Datei nicht gefunden!"
-                exit 1
-            fi
-
-            # Benenne neue Datei um zum Originalnamen (mit Finder)
-            echo "Lösche Original..."
-            rm -f "$pdf_path"
-            echo "✓ Original gelöscht"
-
-            echo "Benenne neue Datei um mit osascript/Finder..."
-            # Verwende Finder/osascript um Berechtigungsprobleme zu umgehen
-            pdf_basename=$(basename "$pdf_path")
-            rename_result=$(osascript 2>&1 <<RENAMESCRIPT
-tell application "Finder"
-    try
-        set sourceFile to POSIX file "$output_path" as alias
-        set targetName to "$pdf_basename"
-        set name of sourceFile to targetName
-        return "SUCCESS"
-    on error errMsg
-        return "ERROR: " & errMsg
-    end try
-end tell
-RENAMESCRIPT
-            )
-
-            echo "Rename Result: $rename_result"
-
-            if [[ "$rename_result" == "SUCCESS" ]]; then
-                echo "✓ Original wurde ersetzt"
-                open -R "$pdf_path"
-            else
-                echo "❌ Finder-Umbenennung fehlgeschlagen: $rename_result"
-                echo "Die neue Datei heißt: $(basename "$output_path")"
-                show_dialog "⚠️ Original wurde gelöscht, aber Umbenennung fehlgeschlagen!\n\nNeue Datei: $(basename "$output_path")\n\nBitte manuell umbenennen."
-                open -R "$output_path"
-            fi
-        elif [[ "$replace_choice" == "Original umbenennen" ]]; then
-            echo "=== Original umbenennen ==="
-            echo "Original: '$pdf_path'"
-            echo "Neue Datei: '$output_path'"
-
-            # Prüfe ob Dateien existieren
-            if [ ! -f "$output_path" ]; then
-                echo "❌ Neue Datei existiert nicht!"
-                show_dialog "⚠️ Neue Datei nicht gefunden!"
-                exit 1
-            fi
-
-            # Benenne Original um zu _original
-            output_dir=$(dirname "$pdf_path")
-            base_name=$(basename "$pdf_path" .pdf)
-            original_backup="${output_dir}/${base_name}_original.pdf"
-
-            echo "Benenne Original um zu: $original_backup"
-            pdf_basename=$(basename "$pdf_path")
-            original_basename=$(basename "$original_backup")
-
-            rename_original=$(osascript 2>&1 <<RENAMEORIGINAL
+        rename_original=$(osascript 2>&1 <<RENAMEORIGINAL
 tell application "Finder"
     try
         set sourceFile to POSIX file "$pdf_path" as alias
@@ -1175,14 +961,14 @@ tell application "Finder"
     end try
 end tell
 RENAMEORIGINAL
-            )
+        )
 
-            if [[ "$rename_original" == "SUCCESS" ]]; then
-                echo "✓ Original umbenannt zu _original"
+        if [[ "$rename_original" == "SUCCESS" ]]; then
+            echo "✓ Original umbenannt zu _original"
 
-                # Benenne neue Datei um zum Originalnamen
-                echo "Benenne neue Datei um zum Originalnamen..."
-                rename_new=$(osascript 2>&1 <<RENAMENEW
+            # Benenne neue Datei um zum Originalnamen
+            echo "Benenne neue Datei um zum Originalnamen..."
+            rename_new=$(osascript 2>&1 <<RENAMENEW
 tell application "Finder"
     try
         set sourceFile to POSIX file "$output_path" as alias
@@ -1194,28 +980,20 @@ tell application "Finder"
     end try
 end tell
 RENAMENEW
-                )
+            )
 
-                if [[ "$rename_new" == "SUCCESS" ]]; then
-                    echo "✓ Neue Datei umbenannt zum Originalnamen"
-                    open -R "$pdf_path"
-                else
-                    echo "❌ Umbenennung der neuen Datei fehlgeschlagen: $rename_new"
-                    show_dialog "⚠️ Original wurde umbenannt, aber neue Datei konnte nicht umbenannt werden!\n\nBitte manuell umbenennen."
-                    open -R "$output_path"
-                fi
-            else
-                echo "❌ Umbenennung des Originals fehlgeschlagen: $rename_original"
-                show_dialog "⚠️ Original konnte nicht umbenannt werden!"
+            if [[ "$rename_new" == "SUCCESS" ]]; then
+                echo "✓ Neue Datei umbenannt zum Originalnamen"
                 open -R "$pdf_path"
+            else
+                echo "❌ Umbenennung der neuen Datei fehlgeschlagen: $rename_new"
+                show_dialog "⚠️ Original wurde umbenannt, aber neue Datei konnte nicht umbenannt werden!\n\nBitte manuell umbenennen."
+                open -R "$output_path"
             fi
-        elif [[ "$replace_choice" == "Beide behalten" ]]; then
-            # Zeige neue Datei im Finder
-            open -R "$output_path"
         else
-            # Abgebrochen - lösche neue Datei
-            rm "$output_path"
-            echo "✓ Abgebrochen, neue Datei gelöscht"
+            echo "❌ Umbenennung des Originals fehlgeschlagen: $rename_original"
+            show_dialog "⚠️ Original konnte nicht umbenannt werden!"
+            open -R "$pdf_path"
         fi
     else
         show_error "PDF wurde nicht erstellt"

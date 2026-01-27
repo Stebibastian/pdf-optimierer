@@ -30,11 +30,11 @@ echo "  Homebrew-Pakete:"
 command -v gs &>/dev/null && echo -e "    ${RED}✗${NC} ghostscript" || echo "    ✓ ghostscript (nicht installiert)"
 command -v magick &>/dev/null && echo -e "    ${RED}✗${NC} imagemagick" || echo "    ✓ imagemagick (nicht installiert)"
 command -v exiftool &>/dev/null && echo -e "    ${RED}✗${NC} exiftool" || echo "    ✓ exiftool (nicht installiert)"
+brew list pillow &>/dev/null && echo -e "    ${RED}✗${NC} pillow" || echo "    ✓ pillow (nicht installiert)"
 
 echo ""
 echo "  Python-Pakete:"
 python3 -c "import fitz" 2>/dev/null && echo -e "    ${RED}✗${NC} PyMuPDF" || echo "    ✓ PyMuPDF (nicht installiert)"
-python3 -c "from PIL import Image" 2>/dev/null && echo -e "    ${RED}✗${NC} Pillow" || echo "    ✓ Pillow (nicht installiert)"
 
 if $REMOVE_HOMEBREW; then
     echo ""
@@ -64,7 +64,7 @@ elif command -v python3 &>/dev/null; then
 fi
 
 if [ -n "$PYTHON_CMD" ]; then
-    for pkg in PyMuPDF Pillow; do
+    for pkg in PyMuPDF; do
         if "$PYTHON_CMD" -m pip show "$pkg" &>/dev/null; then
             echo "  Entferne $pkg..."
             if "$PYTHON_CMD" -m pip uninstall -y "$pkg" 2>/dev/null; then
@@ -98,7 +98,7 @@ elif command -v brew &>/dev/null; then
 fi
 
 if [ -n "$BREW_CMD" ]; then
-    for pkg in ghostscript imagemagick exiftool; do
+    for pkg in ghostscript imagemagick exiftool pillow; do
         if "$BREW_CMD" list "$pkg" &>/dev/null; then
             echo "  Entferne $pkg..."
             if "$BREW_CMD" uninstall "$pkg" 2>&1; then
@@ -149,7 +149,7 @@ command -v gs &>/dev/null && echo -e "  Ghostscript: ${GREEN}installiert${NC}" |
 command -v magick &>/dev/null && echo -e "  ImageMagick: ${GREEN}installiert${NC}" || echo -e "  ImageMagick: ${RED}entfernt${NC}"
 command -v exiftool &>/dev/null && echo -e "  ExifTool:    ${GREEN}installiert${NC}" || echo -e "  ExifTool:    ${RED}entfernt${NC}"
 python3 -c "import fitz" 2>/dev/null && echo -e "  PyMuPDF:     ${GREEN}installiert${NC}" || echo -e "  PyMuPDF:     ${RED}entfernt${NC}"
-python3 -c "from PIL import Image" 2>/dev/null && echo -e "  Pillow:      ${GREEN}installiert${NC}" || echo -e "  Pillow:      ${RED}entfernt${NC}"
+brew list pillow &>/dev/null && echo -e "  Pillow:      ${GREEN}installiert${NC}" || echo -e "  Pillow:      ${RED}entfernt${NC}"
 echo ""
 echo "Starte jetzt 'PDF Optimierer.app' um den Installer zu testen."
 echo "═══════════════════════════════════════"
