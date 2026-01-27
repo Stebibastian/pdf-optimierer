@@ -1,5 +1,47 @@
 #!/bin/bash
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# Homebrew Shell-Umgebung laden (für aktuelle Session)
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)"
+elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv 2>/dev/null)"
+fi
+
+# Hilfsfunktion: brew-Pfad finden
+find_brew() {
+    if command -v brew &> /dev/null; then
+        command -v brew
+    elif [ -x /opt/homebrew/bin/brew ]; then
+        echo "/opt/homebrew/bin/brew"
+    elif [ -x /usr/local/bin/brew ]; then
+        echo "/usr/local/bin/brew"
+    else
+        echo ""
+    fi
+}
+
+# Hilfsfunktion: pip3-Pfad finden (bevorzugt Homebrew)
+find_pip3() {
+    if [ -x /opt/homebrew/bin/pip3 ]; then
+        echo "/opt/homebrew/bin/pip3"
+    elif command -v pip3 &> /dev/null; then
+        command -v pip3
+    else
+        echo ""
+    fi
+}
+
+# Hilfsfunktion: python3-Pfad finden (bevorzugt Homebrew)
+find_python3() {
+    if [ -x /opt/homebrew/bin/python3 ]; then
+        echo "/opt/homebrew/bin/python3"
+    elif command -v python3 &> /dev/null; then
+        command -v python3
+    else
+        echo ""
+    fi
+}
 
 # Funktion für Benachrichtigungen
 notify() {
@@ -113,11 +155,16 @@ Dann klicke auf \"Fertig\" um fortzufahren." buttons {"Fertig"} default button 1
 BREW_WAIT
 
     # Füge Homebrew zum PATH hinzu für diese Session
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null || true)"
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+    if [ -x /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)"
+    elif [ -x /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv 2>/dev/null)"
+    fi
 
     # Prüfe ob Homebrew jetzt verfügbar ist
-    if ! command -v brew &> /dev/null; then
+    BREW_PATH=$(find_brew)
+    if [ -z "$BREW_PATH" ]; then
         osascript <<'BREW_FAILED'
 display dialog "⚠️ Homebrew nicht gefunden!
 
@@ -191,20 +238,66 @@ fi
 
 # Installiere fehlende Tools
 if [ ${#NEED_INSTALL[@]} -gt 0 ] && [ $INSTALL_FAILED -eq 0 ]; then
-    notify "Installation 3/4" "Installiere ${#NEED_INSTALL[@]} Tool(s)... (kann einige Minuten dauern)"
+    BREW_PATH=$(find_brew)
+    if [ -z "$BREW_PATH" ]; then
+        echo "❌ brew nicht gefunden, kann Tools nicht installieren"
+        INSTALL_FAILED=1
+    else
+        echo "Verwende brew: $BREW_PATH"
 
-    if ! brew install "${NEED_INSTALL[@]}" 2>&1; then
-        osascript <<TOOLS_FAILED
-display dialog "⚠️ Tool-Installation fehlgeschlagen!
+        # brew update ausführen (wichtig nach frischer Installation)
+        echo "Aktualisiere Homebrew-Formulae..."
+        notify "Installation 3/4" "Aktualisiere Homebrew..."
+        "$BREW_PATH" update 2>&1 || echo "⚠️ brew update fehlgeschlagen (nicht kritisch)"
 
-Die automatische Installation konnte nicht abgeschlossen werden.
+        TOOLS_FAILED_LIST=()
+        TOOL_INDEX=0
+        TOTAL_TOOLS=${#NEED_INSTALL[@]}
 
-📋 MANUELLE INSTALLATION - Schritt für Schritt:
+        # Installiere jedes Tool einzeln mit Retry
+        for tool in "${NEED_INSTALL[@]}"; do
+            TOOL_INDEX=$((TOOL_INDEX + 1))
+            echo ""
+            echo "--- Installiere $tool ($TOOL_INDEX/$TOTAL_TOOLS) ---"
+            notify "Installation 3/4" "Installiere $tool ($TOOL_INDEX/$TOTAL_TOOLS)..."
+
+            TOOL_INSTALLED=0
+            for attempt in 1 2 3; do
+                echo "Versuch $attempt: brew install $tool"
+                if "$BREW_PATH" install "$tool" 2>&1; then
+                    echo "✓ $tool erfolgreich installiert"
+                    TOOL_INSTALLED=1
+                    break
+                else
+                    echo "⚠️ Versuch $attempt fehlgeschlagen für $tool"
+                    if [ $attempt -lt 3 ]; then
+                        echo "Warte 3 Sekunden vor erneutem Versuch..."
+                        sleep 3
+                    fi
+                fi
+            done
+
+            if [ $TOOL_INSTALLED -eq 0 ]; then
+                echo "❌ $tool konnte nach 3 Versuchen nicht installiert werden"
+                TOOLS_FAILED_LIST+=("$tool")
+            fi
+        done
+
+        # Prüfe ob alle Tools installiert wurden
+        if [ ${#TOOLS_FAILED_LIST[@]} -gt 0 ]; then
+            FAILED_TOOLS_STR=$(printf '%s\n' "${TOOLS_FAILED_LIST[@]}" | sed 's/^/• /')
+            echo "❌ Folgende Tools konnten nicht installiert werden:"
+            echo "$FAILED_TOOLS_STR"
+
+            osascript <<TOOLS_FAILED
+display dialog "⚠️ Einige Tools konnten nicht installiert werden:
+
+$FAILED_TOOLS_STR
+
+📋 MANUELLE INSTALLATION im Terminal:
 
 ═══════════════════════════════════════
 
-SCHRITT 3: Tools installieren
-───────────────────────────────────────
 Kopiere diese Befehle EINZELN ins Terminal:
 
 brew install ghostscript
@@ -217,8 +310,7 @@ brew install python3
 
 ═══════════════════════════════════════
 
-SCHRITT 4: Python-Pakete installieren
-───────────────────────────────────────
+Python-Pakete installieren:
 pip3 install PyMuPDF Pillow
 
 Falls Fehler, versuche:
@@ -230,15 +322,25 @@ pip3 install PyMuPDF Pillow --break-system-packages
 
 Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
 TOOLS_FAILED
-        open -a Terminal
-        INSTALL_FAILED=1
-    else
-        notify "✓ Tools installiert" "Installation 3/4 abgeschlossen"
+            open -a Terminal
+            INSTALL_FAILED=1
+        else
+            echo "✓ Alle ${TOTAL_TOOLS} Tools erfolgreich installiert"
+            notify "✓ Tools installiert" "Installation 3/4 abgeschlossen"
+        fi
+    fi
+
+    # PATH erneut laden (neue Tools könnten neue Pfade haben)
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+    if [ -x /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)"
     fi
 fi
 
 # Prüfe Python nochmal (falls gerade installiert)
-if ! command -v python3 &> /dev/null && [ $INSTALL_FAILED -eq 0 ]; then
+PYTHON_PATH=$(find_python3)
+if [ -z "$PYTHON_PATH" ] && [ $INSTALL_FAILED -eq 0 ]; then
+    echo "❌ Python 3 nicht gefunden"
     osascript <<'PYTHON_MISSING'
 display dialog "⚠️ Python 3 nicht gefunden!
 
@@ -252,37 +354,87 @@ PYTHON_MISSING
     exit 1
 fi
 
-# Prüfe PyMuPDF
-if ! python3 -c "import fitz" 2>/dev/null && [ $INSTALL_FAILED -eq 0 ]; then
+echo "Verwende Python: $PYTHON_PATH"
+
+# Hilfsfunktion: Python-Paket installieren (probiert mehrere Methoden)
+install_pip_package() {
+    local package="$1"
+    local pip_path=$(find_pip3)
+    local python_path=$(find_python3)
+
+    echo "Installiere $package..."
+    echo "  pip3-Pfad: $pip_path"
+    echo "  python3-Pfad: $python_path"
+
+    # Methode 1: Homebrew pip3 direkt
+    if [ -n "$pip_path" ]; then
+        echo "  Methode 1: $pip_path install $package"
+        if "$pip_path" install "$package" 2>&1; then
+            echo "  ✓ $package installiert (Methode 1)"
+            return 0
+        fi
+    fi
+
+    # Methode 2: python3 -m pip
+    if [ -n "$python_path" ]; then
+        echo "  Methode 2: $python_path -m pip install $package"
+        if "$python_path" -m pip install "$package" 2>&1; then
+            echo "  ✓ $package installiert (Methode 2)"
+            return 0
+        fi
+    fi
+
+    # Methode 3: pip3 install --user
+    if [ -n "$pip_path" ]; then
+        echo "  Methode 3: $pip_path install --user $package"
+        if "$pip_path" install --user "$package" 2>&1; then
+            echo "  ✓ $package installiert (Methode 3: --user)"
+            return 0
+        fi
+    fi
+
+    # Methode 4: --break-system-packages (neuere pip/macOS Versionen)
+    if [ -n "$pip_path" ]; then
+        echo "  Methode 4: $pip_path install $package --break-system-packages"
+        if "$pip_path" install "$package" --break-system-packages 2>&1; then
+            echo "  ✓ $package installiert (Methode 4: --break-system-packages)"
+            return 0
+        fi
+    fi
+
+    # Methode 5: python3 -m pip --break-system-packages
+    if [ -n "$python_path" ]; then
+        echo "  Methode 5: $python_path -m pip install $package --break-system-packages"
+        if "$python_path" -m pip install "$package" --break-system-packages 2>&1; then
+            echo "  ✓ $package installiert (Methode 5)"
+            return 0
+        fi
+    fi
+
+    echo "  ❌ Alle Methoden fehlgeschlagen für $package"
+    return 1
+}
+
+# Prüfe und installiere PyMuPDF
+PYTHON_PATH=$(find_python3)
+if ! "$PYTHON_PATH" -c "import fitz" 2>/dev/null && [ $INSTALL_FAILED -eq 0 ]; then
     notify "Installation 4/4" "Installiere PyMuPDF..."
 
-    # Methode 1: Normaler pip install (funktioniert auf neueren Systemen)
-    if ! pip3 install PyMuPDF 2>&1; then
-        # Methode 2: Mit --user Flag (funktioniert auf älteren pip-Versionen)
-        if ! pip3 install --user PyMuPDF 2>&1; then
-            # Methode 3: python3 -m pip (funktioniert wenn pip3 nicht im PATH)
-            if ! python3 -m pip install PyMuPDF 2>&1; then
-                # Methode 4: Mit --break-system-packages (neuere pip-Versionen)
-                if ! pip3 install PyMuPDF --break-system-packages 2>&1; then
-                    osascript <<'PYMUPDF_FAILED'
+    if ! install_pip_package "PyMuPDF"; then
+        osascript <<'PYMUPDF_FAILED'
 display dialog "⚠️ PyMuPDF Installation fehlgeschlagen!
 
-📋 MANUELLE INSTALLATION - Probiere diese Befehle:
+📋 MANUELLE INSTALLATION - Probiere diese Befehle im Terminal:
 
 ═══════════════════════════════════════
 
-SCHRITT 4a: PyMuPDF installieren
-───────────────────────────────────────
 Methode 1 (zuerst probieren):
 pip3 install PyMuPDF
 
-Methode 2 (falls Methode 1 fehlschlägt):
-pip3 install --user PyMuPDF
-
-Methode 3 (falls pip3 nicht gefunden):
+Methode 2 (falls pip3 nicht gefunden):
 python3 -m pip install PyMuPDF
 
-Methode 4 (nur bei \"externally-managed\" Fehler):
+Methode 3 (nur bei \"externally-managed\" Fehler):
 pip3 install PyMuPDF --break-system-packages
 
 ═══════════════════════════════════════
@@ -291,45 +443,31 @@ pip3 install PyMuPDF --break-system-packages
 
 Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
 PYMUPDF_FAILED
-                    open -a Terminal
-                    INSTALL_FAILED=1
-                fi
-            fi
-        fi
+        open -a Terminal
+        INSTALL_FAILED=1
     fi
 fi
 
-# Prüfe Pillow
-if ! python3 -c "from PIL import Image" 2>/dev/null && [ $INSTALL_FAILED -eq 0 ]; then
+# Prüfe und installiere Pillow
+PYTHON_PATH=$(find_python3)
+if ! "$PYTHON_PATH" -c "from PIL import Image" 2>/dev/null && [ $INSTALL_FAILED -eq 0 ]; then
     notify "Installation 4/4" "Installiere Pillow..."
 
-    # Methode 1: Normaler pip install
-    if ! pip3 install Pillow 2>&1; then
-        # Methode 2: Mit --user Flag
-        if ! pip3 install --user Pillow 2>&1; then
-            # Methode 3: python3 -m pip
-            if ! python3 -m pip install Pillow 2>&1; then
-                # Methode 4: Mit --break-system-packages
-                if ! pip3 install Pillow --break-system-packages 2>&1; then
-                    osascript <<'PILLOW_FAILED'
+    if ! install_pip_package "Pillow"; then
+        osascript <<'PILLOW_FAILED'
 display dialog "⚠️ Pillow Installation fehlgeschlagen!
 
-📋 MANUELLE INSTALLATION - Probiere diese Befehle:
+📋 MANUELLE INSTALLATION - Probiere diese Befehle im Terminal:
 
 ═══════════════════════════════════════
 
-SCHRITT 4b: Pillow installieren
-───────────────────────────────────────
 Methode 1 (zuerst probieren):
 pip3 install Pillow
 
-Methode 2 (falls Methode 1 fehlschlägt):
-pip3 install --user Pillow
-
-Methode 3 (falls pip3 nicht gefunden):
+Methode 2 (falls pip3 nicht gefunden):
 python3 -m pip install Pillow
 
-Methode 4 (nur bei \"externally-managed\" Fehler):
+Methode 3 (nur bei \"externally-managed\" Fehler):
 pip3 install Pillow --break-system-packages
 
 ═══════════════════════════════════════
@@ -338,11 +476,8 @@ pip3 install Pillow --break-system-packages
 
 Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
 PILLOW_FAILED
-                    open -a Terminal
-                    INSTALL_FAILED=1
-                fi
-            fi
-        fi
+        open -a Terminal
+        INSTALL_FAILED=1
     fi
 fi
 
@@ -459,16 +594,17 @@ APPLESCRIPT
     # Prüfe zusätzliche Dependencies für Glätten
     echo "Prüfe Dependencies für Glätten-Funktion..."
     MISSING_DEPS=""
+    PYTHON_PATH=$(find_python3)
 
     if ! command -v gs &> /dev/null; then
         MISSING_DEPS="${MISSING_DEPS}• Ghostscript (gs)\n"
     fi
 
-    if ! /opt/homebrew/bin/python3 -c "import fitz" 2>/dev/null; then
+    if [ -z "$PYTHON_PATH" ] || ! "$PYTHON_PATH" -c "import fitz" 2>/dev/null; then
         MISSING_DEPS="${MISSING_DEPS}• PyMuPDF (Python-Bibliothek)\n"
     fi
 
-    if ! /opt/homebrew/bin/python3 -c "from PIL import Image" 2>/dev/null; then
+    if [ -z "$PYTHON_PATH" ] || ! "$PYTHON_PATH" -c "from PIL import Image" 2>/dev/null; then
         MISSING_DEPS="${MISSING_DEPS}• Pillow (Python-Bibliothek)\n"
     fi
 
@@ -517,7 +653,9 @@ if [[ "$choice" == "Verkleinern (Skalieren)" ]]; then
     export OUTPUT_PATH="$output_path"
     export SCALE_FACTOR="$scale_factor"
 
-    /opt/homebrew/bin/python3 << 'PYEND'
+    PYTHON_PATH=$(find_python3)
+    echo "Verwende Python: $PYTHON_PATH"
+    "$PYTHON_PATH" << 'PYEND'
 import sys
 import os
 import subprocess
@@ -763,7 +901,9 @@ else
     export OUTPUT_PATH="$output_path"
     export DPI="$DPI"
 
-    /opt/homebrew/bin/python3 << 'PYEND'
+    PYTHON_PATH=$(find_python3)
+    echo "Verwende Python: $PYTHON_PATH"
+    "$PYTHON_PATH" << 'PYEND'
 import sys
 import os
 import subprocess
