@@ -53,26 +53,35 @@ echo ""
 # --- Python-Pakete entfernen ---
 echo -e "${YELLOW}[1/3] Python-Pakete entfernen...${NC}"
 
-PIP_CMD=""
-if [ -x /opt/homebrew/bin/pip3 ]; then
-    PIP_CMD="/opt/homebrew/bin/pip3"
-elif command -v pip3 &>/dev/null; then
-    PIP_CMD="pip3"
+# Python3 finden
+PYTHON_CMD=""
+if [ -x /opt/homebrew/bin/python3 ]; then
+    PYTHON_CMD="/opt/homebrew/bin/python3"
+elif [ -x /usr/local/bin/python3 ]; then
+    PYTHON_CMD="/usr/local/bin/python3"
+elif command -v python3 &>/dev/null; then
+    PYTHON_CMD="python3"
 fi
 
-if [ -n "$PIP_CMD" ]; then
+if [ -n "$PYTHON_CMD" ]; then
     for pkg in PyMuPDF Pillow; do
-        if "$PIP_CMD" show "$pkg" &>/dev/null; then
+        if "$PYTHON_CMD" -m pip show "$pkg" &>/dev/null; then
             echo "  Entferne $pkg..."
-            "$PIP_CMD" uninstall -y "$pkg" 2>/dev/null \
-                || "$PIP_CMD" uninstall -y "$pkg" --break-system-packages 2>/dev/null \
-                || echo "  ⚠️ $pkg konnte nicht entfernt werden"
+            if "$PYTHON_CMD" -m pip uninstall -y "$pkg" 2>/dev/null; then
+                echo -e "  ${GREEN}✓${NC} $pkg entfernt"
+            elif "$PYTHON_CMD" -m pip uninstall -y "$pkg" --break-system-packages 2>/dev/null; then
+                echo -e "  ${GREEN}✓${NC} $pkg entfernt (break-system-packages)"
+            elif PIP_BREAK_SYSTEM_PACKAGES=1 "$PYTHON_CMD" -m pip uninstall -y "$pkg" 2>/dev/null; then
+                echo -e "  ${GREEN}✓${NC} $pkg entfernt (env override)"
+            else
+                echo -e "  ${RED}⚠️ $pkg konnte nicht entfernt werden${NC}"
+            fi
         else
             echo "  $pkg nicht installiert, überspringe"
         fi
     done
 else
-    echo "  pip3 nicht gefunden, überspringe Python-Pakete"
+    echo "  python3 nicht gefunden, überspringe Python-Pakete"
 fi
 echo ""
 
@@ -92,7 +101,13 @@ if [ -n "$BREW_CMD" ]; then
     for pkg in ghostscript imagemagick exiftool; do
         if "$BREW_CMD" list "$pkg" &>/dev/null; then
             echo "  Entferne $pkg..."
-            "$BREW_CMD" uninstall "$pkg" 2>&1 || echo "  ⚠️ $pkg Fehler"
+            if "$BREW_CMD" uninstall "$pkg" 2>&1; then
+                echo -e "  ${GREEN}✓${NC} $pkg entfernt"
+            elif "$BREW_CMD" uninstall --ignore-dependencies "$pkg" 2>&1; then
+                echo -e "  ${GREEN}✓${NC} $pkg entfernt (ignore-dependencies)"
+            else
+                echo -e "  ${RED}⚠️ $pkg konnte nicht entfernt werden${NC}"
+            fi
         else
             echo "  $pkg nicht installiert, überspringe"
         fi
