@@ -32,58 +32,140 @@ INSTALL_FAILED=0
 
 # Prüfe Homebrew
 if ! command -v brew &> /dev/null; then
-    notify "Installation" "Homebrew wird installiert... (kann 5-10 Min dauern)"
-
     # Prüfe ob Xcode Command Line Tools installiert sind
     if ! xcode-select -p &> /dev/null; then
-        osascript <<'XCODE_HELP'
-display dialog "⚠️ Xcode Command Line Tools fehlen!
+        notify "Installation 1/4" "Xcode Command Line Tools werden installiert..."
 
-Diese sind erforderlich, um Homebrew zu installieren.
+        # Starte Installation automatisch
+        xcode-select --install 2>&1
 
-📋 Installation:
+        # Warte auf Bestätigung vom User
+        osascript <<'XCODE_WAIT'
+display dialog "📦 Xcode Command Line Tools werden installiert
 
-1. Führe diesen Befehl im Terminal aus:
-   xcode-select --install
+Ein System-Dialog sollte sich geöffnet haben.
 
-2. Ein Dialog erscheint - klicke auf \"Installieren\"
+✅ Bitte klicke dort auf \"Installieren\" und warte, bis die Installation abgeschlossen ist (5-10 Minuten).
 
-3. Warte bis die Installation abgeschlossen ist (kann 5-10 Min dauern)
+Danach klicke hier auf \"Weiter\", um fortzufahren." buttons {"Weiter"} default button 1 with title "PDF Optimierer - Installation 1/4" with icon note
+XCODE_WAIT
 
-4. Starte diese App danach erneut
+        # Prüfe nochmal ob jetzt installiert
+        if ! xcode-select -p &> /dev/null; then
+            osascript <<'XCODE_FAILED'
+display dialog "⚠️ Xcode Command Line Tools nicht installiert!
 
-🔧 Oder installiere Xcode aus dem App Store (größer, aber komplett)" buttons {"OK"} default button 1 with title "PDF Optimierer - Xcode Tools fehlen" with icon stop
-XCODE_HELP
-        exit 1
+Die Installation wurde abgebrochen oder ist fehlgeschlagen.
+
+📋 MANUELLE INSTALLATION - Schritt für Schritt:
+
+═══════════════════════════════════════
+
+SCHRITT 1: Xcode Tools installieren
+───────────────────────────────────────
+Kopiere diesen Befehl ins Terminal:
+
+xcode-select --install
+
+Klicke im Dialog auf \"Installieren\" und warte 5-10 Min.
+
+═══════════════════════════════════════
+
+Nach der Installation starte diese App erneut!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
+XCODE_FAILED
+
+            # Öffne Terminal für den User
+            open -a Terminal
+            exit 1
+        fi
     fi
 
-    if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>&1; then
-        osascript <<'BREW_HELP'
-display dialog "⚠️ Homebrew Installation fehlgeschlagen!
+    notify "Installation 2/4" "Homebrew wird installiert... (kann 5-10 Min dauern)"
 
-📋 Manuelle Installation:
+    # Installiere Homebrew im Terminal (interaktiv)
+    osascript <<'BREW_START'
+display dialog "📦 Homebrew wird jetzt installiert
 
-1. Öffne Terminal (in Programme > Dienstprogramme)
+Ein Terminal-Fenster öffnet sich.
 
-2. Kopiere und führe diesen Befehl aus:
-   /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
+⚠️ WICHTIG:
+• Das Terminal fragt nach deinem Mac-Passwort
+• Drücke RETURN wenn gefragt wird
+• Warte bis \"Installation successful\" erscheint
 
-3. Folge den Anweisungen im Terminal
+✅ Am Ende zeigt Homebrew 2 Befehle an - führe diese aus, oder schließe das Terminal komplett und öffne es neu.
 
-4. ⚠️ SEHR WICHTIG: Am Ende zeigt Homebrew 2 Befehle an, die so aussehen:
-   echo 'eval \"$(/opt/homebrew/bin/brew shellenv)\"' >> ~/.zprofile
-   eval \"$(/opt/homebrew/bin/brew shellenv)\"
+Danach klicke hier auf \"Weiter\"." buttons {"Weiter"} default button 1 with title "PDF Optimierer - Installation 2/4" with icon note
+BREW_START
 
-   Diese MÜSSEN ausgeführt werden!
+    # Öffne Terminal und führe Installation aus
+    osascript -e 'tell application "Terminal" to do script "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""'
 
-   Oder einfacher: Terminal komplett schließen und neu öffnen
+    # Warte auf Bestätigung
+    osascript <<'BREW_WAIT'
+display dialog "Ist die Homebrew-Installation abgeschlossen?
 
-5. Starte diese App erneut
+✅ Prüfe im Terminal ob dort \"Installation successful\" steht
 
-📄 Log: ~/Desktop/pdf_optimierer.log
-🌐 Mehr Infos: https://brew.sh" buttons {"OK"} default button 1 with title "PDF Optimierer - Homebrew Installation" with icon stop
-BREW_HELP
+⚠️ Hast du die 2 Befehle am Ende ausgeführt (oder Terminal neu gestartet)?
+
+Dann klicke auf \"Fertig\" um fortzufahren." buttons {"Fertig"} default button 1 with title "PDF Optimierer - Installation 2/4" with icon note
+BREW_WAIT
+
+    # Füge Homebrew zum PATH hinzu für diese Session
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+    eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null || true)"
+
+    # Prüfe ob Homebrew jetzt verfügbar ist
+    if ! command -v brew &> /dev/null; then
+        osascript <<'BREW_FAILED'
+display dialog "⚠️ Homebrew nicht gefunden!
+
+Die Installation wurde möglicherweise abgebrochen oder die Pfad-Befehle wurden nicht ausgeführt.
+
+📋 MANUELLE INSTALLATION - Schritt für Schritt:
+
+═══════════════════════════════════════
+
+SCHRITT 1: Xcode Tools (falls noch nicht gemacht)
+───────────────────────────────────────
+xcode-select --install
+
+═══════════════════════════════════════
+
+SCHRITT 2: Homebrew installieren
+───────────────────────────────────────
+/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
+
+⚠️ WICHTIG: Am Ende 2 Befehle ausführen oder Terminal neu starten!
+
+═══════════════════════════════════════
+
+SCHRITT 3: Tools installieren
+───────────────────────────────────────
+brew install ghostscript
+brew install imagemagick
+brew install exiftool
+brew install python3
+
+═══════════════════════════════════════
+
+SCHRITT 4: Python-Pakete installieren
+───────────────────────────────────────
+pip3 install PyMuPDF Pillow
+
+Falls Fehler, versuche:
+pip3 install PyMuPDF Pillow --break-system-packages
+
+═══════════════════════════════════════
+
+Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
+BREW_FAILED
+
+        open -a Terminal
         INSTALL_FAILED=1
+    else
+        notify "✓ Homebrew installiert" "Installation 2/4 abgeschlossen"
     fi
 fi
 
@@ -102,75 +184,171 @@ if ! command -v exiftool &> /dev/null; then
     NEED_INSTALL+=("exiftool")
 fi
 
+# Prüfe ob Python3 installiert werden muss
+if ! command -v python3 &> /dev/null; then
+    NEED_INSTALL+=("python3")
+fi
+
 # Installiere fehlende Tools
 if [ ${#NEED_INSTALL[@]} -gt 0 ] && [ $INSTALL_FAILED -eq 0 ]; then
-    notify "Installation" "Installiere ${#NEED_INSTALL[@]} Tool(s)... (kann einige Minuten dauern)"
+    notify "Installation 3/4" "Installiere ${#NEED_INSTALL[@]} Tool(s)... (kann einige Minuten dauern)"
 
     if ! brew install "${NEED_INSTALL[@]}" 2>&1; then
-        show_error "Tool-Installation fehlgeschlagen!\n\nBitte installiere manuell:\nbrew install ${NEED_INSTALL[*]}\n\nSiehe Log: ~/Desktop/pdf_optimierer.log"
+        osascript <<TOOLS_FAILED
+display dialog "⚠️ Tool-Installation fehlgeschlagen!
+
+Die automatische Installation konnte nicht abgeschlossen werden.
+
+📋 MANUELLE INSTALLATION - Schritt für Schritt:
+
+═══════════════════════════════════════
+
+SCHRITT 3: Tools installieren
+───────────────────────────────────────
+Kopiere diese Befehle EINZELN ins Terminal:
+
+brew install ghostscript
+
+brew install imagemagick
+
+brew install exiftool
+
+brew install python3
+
+═══════════════════════════════════════
+
+SCHRITT 4: Python-Pakete installieren
+───────────────────────────────────────
+pip3 install PyMuPDF Pillow
+
+Falls Fehler, versuche:
+pip3 install PyMuPDF Pillow --break-system-packages
+
+═══════════════════════════════════════
+
+📄 Details im Log: ~/Desktop/pdf_optimierer.log
+
+Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
+TOOLS_FAILED
+        open -a Terminal
         INSTALL_FAILED=1
+    else
+        notify "✓ Tools installiert" "Installation 3/4 abgeschlossen"
     fi
 fi
 
-# Prüfe Python
-if ! command -v python3 &> /dev/null; then
-    show_error "Python 3 nicht gefunden!\n\nBitte installiere Homebrew Python:\nbrew install python3"
+# Prüfe Python nochmal (falls gerade installiert)
+if ! command -v python3 &> /dev/null && [ $INSTALL_FAILED -eq 0 ]; then
+    osascript <<'PYTHON_MISSING'
+display dialog "⚠️ Python 3 nicht gefunden!
+
+📋 Bitte installiere Python 3:
+
+brew install python3
+
+Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer" with icon stop
+PYTHON_MISSING
+    open -a Terminal
     exit 1
 fi
 
 # Prüfe PyMuPDF
-if ! python3 -c "import fitz" 2>/dev/null; then
-    notify "Installation" "Installiere PyMuPDF..."
+if ! python3 -c "import fitz" 2>/dev/null && [ $INSTALL_FAILED -eq 0 ]; then
+    notify "Installation 4/4" "Installiere PyMuPDF..."
 
-    if ! pip3 install PyMuPDF --break-system-packages 2>&1; then
-        show_error "PyMuPDF Installation fehlgeschlagen!\n\nBitte installiere manuell:\npip3 install PyMuPDF --break-system-packages"
-        INSTALL_FAILED=1
+    # Methode 1: Normaler pip install (funktioniert auf neueren Systemen)
+    if ! pip3 install PyMuPDF 2>&1; then
+        # Methode 2: Mit --user Flag (funktioniert auf älteren pip-Versionen)
+        if ! pip3 install --user PyMuPDF 2>&1; then
+            # Methode 3: python3 -m pip (funktioniert wenn pip3 nicht im PATH)
+            if ! python3 -m pip install PyMuPDF 2>&1; then
+                # Methode 4: Mit --break-system-packages (neuere pip-Versionen)
+                if ! pip3 install PyMuPDF --break-system-packages 2>&1; then
+                    osascript <<'PYMUPDF_FAILED'
+display dialog "⚠️ PyMuPDF Installation fehlgeschlagen!
+
+📋 MANUELLE INSTALLATION - Probiere diese Befehle:
+
+═══════════════════════════════════════
+
+SCHRITT 4a: PyMuPDF installieren
+───────────────────────────────────────
+Methode 1 (zuerst probieren):
+pip3 install PyMuPDF
+
+Methode 2 (falls Methode 1 fehlschlägt):
+pip3 install --user PyMuPDF
+
+Methode 3 (falls pip3 nicht gefunden):
+python3 -m pip install PyMuPDF
+
+Methode 4 (nur bei \"externally-managed\" Fehler):
+pip3 install PyMuPDF --break-system-packages
+
+═══════════════════════════════════════
+
+📄 Log: ~/Desktop/pdf_optimierer.log
+
+Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
+PYMUPDF_FAILED
+                    open -a Terminal
+                    INSTALL_FAILED=1
+                fi
+            fi
+        fi
     fi
 fi
 
 # Prüfe Pillow
-if ! python3 -c "from PIL import Image" 2>/dev/null; then
-    notify "Installation" "Installiere Pillow..."
+if ! python3 -c "from PIL import Image" 2>/dev/null && [ $INSTALL_FAILED -eq 0 ]; then
+    notify "Installation 4/4" "Installiere Pillow..."
 
-    if ! pip3 install Pillow --break-system-packages 2>&1; then
-        show_error "Pillow Installation fehlgeschlagen!\n\nBitte installiere manuell:\npip3 install Pillow --break-system-packages"
-        INSTALL_FAILED=1
+    # Methode 1: Normaler pip install
+    if ! pip3 install Pillow 2>&1; then
+        # Methode 2: Mit --user Flag
+        if ! pip3 install --user Pillow 2>&1; then
+            # Methode 3: python3 -m pip
+            if ! python3 -m pip install Pillow 2>&1; then
+                # Methode 4: Mit --break-system-packages
+                if ! pip3 install Pillow --break-system-packages 2>&1; then
+                    osascript <<'PILLOW_FAILED'
+display dialog "⚠️ Pillow Installation fehlgeschlagen!
+
+📋 MANUELLE INSTALLATION - Probiere diese Befehle:
+
+═══════════════════════════════════════
+
+SCHRITT 4b: Pillow installieren
+───────────────────────────────────────
+Methode 1 (zuerst probieren):
+pip3 install Pillow
+
+Methode 2 (falls Methode 1 fehlschlägt):
+pip3 install --user Pillow
+
+Methode 3 (falls pip3 nicht gefunden):
+python3 -m pip install Pillow
+
+Methode 4 (nur bei \"externally-managed\" Fehler):
+pip3 install Pillow --break-system-packages
+
+═══════════════════════════════════════
+
+📄 Log: ~/Desktop/pdf_optimierer.log
+
+Danach diese App erneut starten!" buttons {"Terminal öffnen", "Abbrechen"} default button 1 with title "PDF Optimierer - Manuelle Installation" with icon stop
+PILLOW_FAILED
+                    open -a Terminal
+                    INSTALL_FAILED=1
+                fi
+            fi
+        fi
     fi
 fi
 
 if [ $INSTALL_FAILED -eq 1 ]; then
-    # Zeige ausführliche Installations-Anleitung
-    osascript <<'HELP_DIALOG'
-display dialog "⚠️ Installation fehlgeschlagen!
-
-Die automatische Installation konnte nicht abgeschlossen werden.
-
-📋 Bitte führe die folgenden Schritte MANUELL aus:
-
-1️⃣ Xcode Command Line Tools:
-   xcode-select --install
-
-2️⃣ Homebrew installieren:
-   /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
-
-   ⚠️ WICHTIG: Nach der Installation zeigt Homebrew 2 Befehle an - diese MÜSSEN ausgeführt werden!
-   (Oder Terminal komplett neu starten)
-
-3️⃣ Tools installieren (jeden Befehl einzeln):
-   brew install ghostscript
-   brew install imagemagick
-   brew install exiftool
-   brew install python3
-
-4️⃣ Python-Pakete (probiere zuerst ohne --break-system-packages):
-   pip3 install PyMuPDF
-   pip3 install Pillow
-
-📄 Details im Log: ~/Desktop/pdf_optimierer.log
-📖 Vollständige Anleitung: github.com/Stebibastian/pdf-optimierer
-
-Nach der manuellen Installation die App erneut starten!" buttons {"OK"} default button 1 with title "PDF Optimierer - Installation" with icon stop
-HELP_DIALOG
+    # Zeige ausführliche Installations-Anleitung - dieser Code wird nur erreicht,
+    # wenn eine der spezifischen Installationen bereits einen Dialog gezeigt hat
     exit 1
 fi
 
