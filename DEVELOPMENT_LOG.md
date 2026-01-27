@@ -3,7 +3,7 @@
 ## Projekt-Übersicht
 
 **Repository**: https://github.com/Stebibastian/pdf-optimierer
-**Aktuelle Version**: v1.2.0
+**Aktuelle Version**: v1.3.0
 **macOS App**: PDF Optimierer.app
 **Hauptskript**: PDF_Optimierer.sh
 
@@ -14,7 +14,7 @@
 ├── PDF_Optimierer.sh                    # Haupt-Bash-Skript
 ├── PDF Optimierer.app/                  # macOS App Bundle
 │   ├── Contents/
-│   │   ├── Info.plist                   # Version: 1.2.0, Build: 5
+│   │   ├── Info.plist                   # Version: 1.3.0, Build: 6
 │   │   ├── MacOS/PDF_Optimierer         # Kopie des Hauptskripts
 │   │   └── Resources/AppIcon.icns       # App-Icon
 ├── README.md                            # Dokumentation
@@ -73,7 +73,31 @@ pip3 install PyMuPDF Pillow --break-system-packages
 
 ## Versionshistorie
 
-### v1.2.0 (27.01.2026) - AKTUELL
+### v1.3.0 (27.01.2026) - AKTUELL
+**App-Icon & robustere Installation**
+
+**Neue Features**:
+- **App-Icon**: Eigenes Icon für PDF Optimierer im macOS-Stil (rotes Dokument mit grünem Optimierungs-Badge)
+- Icon in allen Größen (16px bis 1024px) als `.icns` im App-Bundle
+- Quelldatei `AppIcon.png` (1024x1024) im Repository
+
+**Verbesserte Installation**:
+- **Einzelinstallation**: Homebrew-Pakete werden jetzt einzeln installiert statt alle auf einmal — wenn ein Paket fehlschlägt, werden die anderen trotzdem installiert
+- **`brew update`** wird nach frischer Homebrew-Installation automatisch ausgeführt
+- **Retry-Logik**: Jedes Brew-Paket wird bis zu 3x versucht mit 3s Pause
+- **Dynamische Pfad-Erkennung**: Hilfsfunktionen `find_brew`, `find_pip3`, `find_python3` suchen automatisch an `/opt/homebrew/bin`, `/usr/local/bin` und im `$PATH`
+- **Wiederverwendbare `install_pip_package` Funktion**: Probiert 5 Methoden nacheinander (direkt, `python3 -m pip`, `--user`, `--break-system-packages`)
+- **PATH-Reload**: `brew shellenv` wird am Skript-Start und nach jeder Installation neu geladen
+- **Besseres Logging**: Zeigt genau, welches Paket mit welcher Methode installiert wurde
+
+**Technische Änderungen**:
+- Info.plist: Version 1.3.0, Build 6
+- Keine hardcodierten `/opt/homebrew/bin/python3` Pfade mehr im Skript
+- Robustere PATH-Handhabung mit `/opt/homebrew/sbin` im PATH
+
+---
+
+### v1.2.0 (27.01.2026)
 **Verbesserte automatische Installation**
 
 **Neue Features**:
@@ -388,6 +412,6 @@ command -v convert && echo "✓ ImageMagick" || echo "✗ ImageMagick fehlt"
 
 ---
 
-**Letzte Aktualisierung**: 26.01.2026
-**Version**: 1.1.2
-**Status**: Produktiv, alle bekannten Bugs gefixt
+**Letzte Aktualisierung**: 27.01.2026
+**Version**: 1.3.0
+**Status**: Produktiv, mit App-Icon und robuster Installation
