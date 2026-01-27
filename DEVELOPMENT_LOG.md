@@ -3,7 +3,7 @@
 ## Projekt-Übersicht
 
 **Repository**: https://github.com/Stebibastian/pdf-optimierer
-**Aktuelle Version**: v1.1.2
+**Aktuelle Version**: v1.2.0
 **macOS App**: PDF Optimierer.app
 **Hauptskript**: PDF_Optimierer.sh
 
@@ -14,7 +14,7 @@
 ├── PDF_Optimierer.sh                    # Haupt-Bash-Skript
 ├── PDF Optimierer.app/                  # macOS App Bundle
 │   ├── Contents/
-│   │   ├── Info.plist                   # Version: 1.1.2, Build: 4
+│   │   ├── Info.plist                   # Version: 1.2.0, Build: 5
 │   │   ├── MacOS/PDF_Optimierer         # Kopie des Hauptskripts
 │   │   └── Resources/AppIcon.icns       # App-Icon
 ├── README.md                            # Dokumentation
@@ -73,7 +73,35 @@ pip3 install PyMuPDF Pillow --break-system-packages
 
 ## Versionshistorie
 
-### v1.1.2 (26.01.2026) - AKTUELL
+### v1.2.0 (27.01.2026) - AKTUELL
+**Verbesserte automatische Installation**
+
+**Neue Features**:
+- **Xcode Command Line Tools** werden automatisch getriggert (`xcode-select --install`)
+- **Homebrew Installation** öffnet Terminal automatisch und führt Installation durch
+- **Python-Pakete** probieren 4 verschiedene Installationsmethoden automatisch:
+  1. `pip3 install PyMuPDF` (Standard)
+  2. `pip3 install --user PyMuPDF` (für ältere pip-Versionen ohne `--break-system-packages` Support)
+  3. `python3 -m pip install PyMuPDF` (wenn `pip3` nicht im PATH ist)
+  4. `pip3 install PyMuPDF --break-system-packages` (neuere Systeme)
+- Schritt-für-Schritt Dialoge mit Fortschrittsanzeige (Installation 1/4, 2/4, 3/4, 4/4)
+- Formatierte Copy-Paste-Anleitungen mit klaren Trennlinien (`═══`)
+- **"Terminal öffnen"** Button bei manueller Installation
+- Bessere Fehlermeldungen mit mehreren Lösungswegen
+
+**Bugfix**:
+- Behebt "no such option: --break-system-packages" Fehler auf älteren pip-Versionen (z.B. pip 21.2.4)
+- Automatische Fallback-Mechanismen für verschiedene pip-Versionen
+
+**Technische Änderungen**:
+- Xcode Tools: Automatischer Trigger + Wartelogik
+- Homebrew: Öffnet Terminal mit Installationsbefehl + Bestätigungsdialog
+- Python-Pakete: 4-stufige Fallback-Logik mit verschiedenen pip-Methoden
+- Bessere PATH-Erkennung für Homebrew (`/opt/homebrew` + `/usr/local`)
+
+---
+
+### v1.1.2 (26.01.2026)
 **Kritischer Bugfix für ältere macOS-Versionen**
 
 **Problem**:
