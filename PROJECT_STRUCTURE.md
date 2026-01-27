@@ -9,12 +9,15 @@ pdf-optimierer/
 ├── .gitignore                     # Git Ignores
 │
 ├── PDF_Optimierer.sh             # Haupt-Script (Bash + Python)
+├── AppIcon.png                   # App-Icon Quelldatei (1024x1024)
 │
 ├── PDF Optimierer.app/           # macOS App Bundle
 │   └── Contents/
 │       ├── Info.plist            # App Metadaten
-│       └── MacOS/
-│           └── PDF_Optimierer    # Ausführbares Script (Kopie)
+│       ├── MacOS/
+│       │   └── PDF_Optimierer    # Ausführbares Script (Kopie)
+│       └── Resources/
+│           └── AppIcon.icns      # App-Icon (macOS Format)
 │
 └── pdf_optimierer.log            # Log-Datei (generiert)
 ```
@@ -30,6 +33,13 @@ pdf-optimierer/
 | `CONTRIBUTING.md` | Guide für Contributors, Code-Richtlinien |
 | `LICENSE` | MIT Lizenz |
 | `.gitignore` | Git Ignore-Regeln (Logs, macOS Files, etc.) |
+
+### Ressourcen
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `AppIcon.png` | App-Icon Quelldatei (1024x1024 PNG) |
+| `AppIcon.icns` | macOS Icon im App-Bundle (Resources/) |
 
 ### Hauptcode
 
@@ -57,14 +67,16 @@ PDF Optimierer.app/
 │   ├── Info.plist                # Bundle-Info (Name, Version, etc.)
 │   ├── MacOS/
 │   │   └── PDF_Optimierer        # Haupt-Executable
-│   └── Resources/                # (leer, für zukünftige Icons)
+│   └── Resources/
+│       └── AppIcon.icns          # App-Icon (alle Größen: 16-1024px)
 ```
 
 **Info.plist Schlüssel-Felder:**
 - `CFBundleExecutable`: Name des ausführbaren Scripts
+- `CFBundleIconFile`: AppIcon (verweist auf Resources/AppIcon.icns)
 - `CFBundleIdentifier`: com.local.pdfoptimierer
 - `CFBundleName`: PDF Optimierer
-- `CFBundleShortVersionString`: 1.0
+- `CFBundleShortVersionString`: 1.2.0
 
 ## Workflow-Diagramm
 
