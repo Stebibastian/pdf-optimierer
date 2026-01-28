@@ -59,6 +59,29 @@ Skaliert PDFs prozentual (z.B. 50% der Originalgröße). Ideal für:
 - Kleinere Druckgrößen
 - Dateigröße reduzieren
 
+## Update
+
+### Automatisches Update
+
+```bash
+cd pdf-optimierer
+./update.sh
+```
+
+Das Update-Script:
+- Prüft auf neue Versionen auf GitHub
+- Erstellt automatisch ein Backup
+- Aktualisiert sowohl das Repository als auch die App in `/Applications`
+- Zeigt Release Notes an
+
+### Manuelles Update
+
+```bash
+cd pdf-optimierer
+git pull origin main
+cp "PDF Optimierer.app" /Applications/
+```
+
 ## Deinstallation
 
 Um alle von der App installierten Dependencies zu entfernen:

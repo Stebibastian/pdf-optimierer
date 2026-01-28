@@ -805,6 +805,9 @@ import shutil
 try:
     import fitz
     from PIL import Image, ImageEnhance
+    # Erhöhe Pixel-Limit für große Bauzeichnungen (A0, A1, etc.)
+    # Standard ist ~178 Mio Pixel, wir erlauben bis 500 Mio Pixel
+    Image.MAX_IMAGE_PIXELS = 500000000
 except ImportError as e:
     print(f"❌ Import-Fehler: {e}")
     sys.exit(1)
